@@ -1,0 +1,35 @@
+{
+  "build_name": "Personal Wellness Trainer — Wellness Practice Platform",
+  "version": "1.0.0",
+  "modules_included": {
+    "activity":       true,
+    "finance":        true,
+    "team":           true,
+    "messaging":      true,
+    "notifications":  true,
+    "agreements":     true,
+    "media":          true,
+    "catalog":        true,
+    "gps":            false,
+    "delivery_fees":  true,
+    "scheduling":     true,
+    "reservations":   true,
+    "inventory":      true,
+    "reviews":        true
+  },
+  "media_types": {
+    "video":  true,
+    "audio":  true,
+    "pdf":    true,
+    "images": true
+  },
+  "payment_providers": {
+    "stripe":  true,
+    "paypal":  false,
+    "manual":  true
+  },
+  "owner_has_control_panel":         true,
+  "owner_can_edit_upgrade_link":     false,
+  "owner_can_invite_partners":       true,
+  "owner_can_manage_client_content": true
+}

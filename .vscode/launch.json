@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            // Fill in your real Supabase URL/anon key below to run locally
+            // with "Run and Debug" — but since this file is tracked in
+            // git, DON'T commit real values here if this repo (or any
+            // fork of it) is or might become public. Leave the
+            // placeholders in what you commit; only fill in real values
+            // in your own local, uncommitted copy.
+            "name": "personal_wellness_trainer (with Supabase)",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=SUPABASE_URL=YOUR_SUPABASE_URL_HERE",
+                "--dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY_HERE"
+            ]
+        }
+    ]
+}

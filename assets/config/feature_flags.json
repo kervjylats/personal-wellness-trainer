@@ -1,0 +1,46 @@
+{
+  "challenges": {
+    "owner_can_create": true,
+    "partner_can_create": false,
+    "partner_can_view": true,
+    "client_can_view": true,
+    "client_can_join": true,
+    "show_in_partner_shell": true,
+    "show_in_client_shell": true
+  },
+  "homework": {
+    "owner_can_assign": true,
+    "partner_can_assign": false,
+    "client_can_view": true,
+    "show_in_partner_shell": true,
+    "show_in_client_shell": true
+  },
+  "progress": {
+    "client_can_log": true,
+    "client_can_view": true,
+    "show_in_client_shell": true
+  },
+  "loyalty": {
+    "client_can_redeem": true,
+    "owner_can_manage": true,
+    "show_in_client_shell": true,
+    "show_in_owner_shell": true
+  },
+  "community_feed": {
+    "enabled": true,
+    "owner_can_post": true,
+    "partner_can_post": true,
+    "client_can_post": true,
+    "show_in_partner_shell": true,
+    "show_in_client_shell": true
+  },
+  "chat": {
+    "partner_can_create_group": false
+  },
+  "discover": {
+    "client_tab_enabled": true
+  },
+  "staff_permissions": {
+    "owner_can_manage": true
+  }
+}

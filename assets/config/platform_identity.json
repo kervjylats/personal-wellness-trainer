@@ -1,0 +1,295 @@
+{
+  "app_name": "Personal Wellness Trainer",
+  "industry_id": "wellness",
+  "industry_display_name": "Wellness",
+  "tagline": "Your journey to whole-body wellbeing",
+  "primary_color": "#4CAF50",
+  "accent_color": "#26A69A",
+  "job_categories": [
+    {
+      "id": "movement",
+      "label": "Movement & Fitness",
+      "icon": "fitness_center"
+    },
+    {
+      "id": "mind_breath",
+      "label": "Mind & Breath",
+      "icon": "spa"
+    },
+    {
+      "id": "nutrition",
+      "label": "Nutrition & Wellness",
+      "icon": "restaurant"
+    },
+    {
+      "id": "integrative",
+      "label": "Integrative Therapies",
+      "icon": "self_improvement"
+    }
+  ],
+  "icon_path": "assets/images/icon.png",
+  "terminology": {
+    "owner": "Practitioner",
+    "partner": "Partner",
+    "staff": "Team Member",
+    "client": "Client",
+    "activity": "Session",
+    "activities": "Sessions",
+    "network": "Network",
+    "agreement": "Partnership",
+    "finance": "Revenue",
+    "team": "Team",
+    "media": "Content",
+    "catalog": "Shop",
+    "dashboard": "Dashboard"
+  },
+  "modules": {
+    "activity": true,
+    "finance": true,
+    "team": true,
+    "messaging": true,
+    "notifications": true,
+    "agreements": true,
+    "media": true,
+    "catalog": true,
+    "gps": false,
+    "delivery_fees": false,
+    "scheduling": true,
+    "reservations": false,
+    "inventory": false,
+    "reviews": true
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "id": "dashboard",
+        "icon": "home_outlined",
+        "label": "Home"
+      },
+      {
+        "id": "activity",
+        "icon": "calendar_today_outlined",
+        "label": "Sessions"
+      },
+      {
+        "id": "finance",
+        "icon": "account_balance_wallet_outlined",
+        "label": "Revenue"
+      },
+      {
+        "id": "network",
+        "icon": "hub_outlined",
+        "label": "Network"
+      }
+    ]
+  },
+  "activity_fields": [],
+  "categories": [
+    {
+      "id": "yoga_studio",
+      "label": "Yoga Studio",
+      "group": "movement"
+    },
+    {
+      "id": "pilates_studio",
+      "label": "Pilates Studio",
+      "group": "movement"
+    },
+    {
+      "id": "strength_coach",
+      "label": "Strength Coach",
+      "group": "movement"
+    },
+    {
+      "id": "gym_coach",
+      "label": "Gym Coach",
+      "group": "movement"
+    },
+    {
+      "id": "meditation_teacher",
+      "label": "Meditation Teacher",
+      "group": "mind_breath"
+    },
+    {
+      "id": "breathwork_facilitator",
+      "label": "Breathwork Facilitator",
+      "group": "mind_breath"
+    },
+    {
+      "id": "life_coach",
+      "label": "Life Coach",
+      "group": "mind_breath"
+    },
+    {
+      "id": "nutritionist",
+      "label": "Nutritionist",
+      "group": "nutrition"
+    },
+    {
+      "id": "herbalist",
+      "label": "Herbalist",
+      "group": "nutrition"
+    },
+    {
+      "id": "ayurveda_consultant",
+      "label": "Ayurveda Consultant",
+      "group": "nutrition"
+    },
+    {
+      "id": "somatic_therapist",
+      "label": "Somatic Therapist",
+      "group": "integrative"
+    },
+    {
+      "id": "eft_tapping_coach",
+      "label": "EFT Tapping Coach",
+      "group": "integrative"
+    },
+    {
+      "id": "fascia_release_coach",
+      "label": "Fascia Release Coach",
+      "group": "integrative"
+    },
+    {
+      "id": "reiki_practitioner",
+      "label": "Reiki Practitioner",
+      "group": "integrative"
+    },
+    {
+      "id": "sound_healer",
+      "label": "Sound Healer",
+      "group": "integrative"
+    },
+    {
+      "id": "personal_trainer",
+      "label": "Personal Trainer",
+      "group": "movement"
+    },
+    {
+      "id": "fitness_coach",
+      "label": "Fitness Coach",
+      "group": "movement"
+    },
+    {
+      "id": "dance_instructor",
+      "label": "Dance Instructor",
+      "group": "movement"
+    },
+    {
+      "id": "massage_therapist",
+      "label": "Massage Therapist",
+      "group": "integrative"
+    },
+    {
+      "id": "wellness_coach",
+      "label": "Wellness Coach",
+      "group": "mind_breath"
+    },
+    {
+      "id": "naturopath",
+      "label": "Naturopath",
+      "group": "nutrition"
+    },
+    {
+      "id": "acupuncturist",
+      "label": "Acupuncturist",
+      "group": "integrative"
+    },
+    {
+      "id": "physiotherapist",
+      "label": "Physiotherapist",
+      "group": "movement"
+    }
+  ],
+  "payment": {
+    "model": "upfront",
+    "currency_default": "$",
+    "commission_type": "percentage",
+    "client_pays_via": "in_app"
+  },
+  "permissions": {
+    "staff": {
+      "create_activity": {
+        "default": true,
+        "owner_can_toggle": true,
+        "locked": false
+      },
+      "edit_activity": {
+        "default": true,
+        "owner_can_toggle": true,
+        "locked": false
+      },
+      "view_finance": {
+        "default": false,
+        "owner_can_toggle": true,
+        "locked": false
+      },
+      "view_clients": {
+        "default": true,
+        "owner_can_toggle": true,
+        "locked": false
+      },
+      "send_messages": {
+        "default": true,
+        "owner_can_toggle": true,
+        "locked": false
+      }
+    },
+    "partner": {
+      "create_activity": {
+        "default": true,
+        "owner_can_toggle": true,
+        "locked": false
+      },
+      "view_finance": {
+        "default": false,
+        "owner_can_toggle": false,
+        "locked": true
+      },
+      "view_clients": {
+        "default": false,
+        "owner_can_toggle": false,
+        "locked": true
+      },
+      "send_messages": {
+        "default": true,
+        "owner_can_toggle": false,
+        "locked": true
+      }
+    },
+    "client": {
+      "make_payment": {
+        "default": true,
+        "owner_can_toggle": false,
+        "locked": true
+      },
+      "send_messages": {
+        "default": true,
+        "owner_can_toggle": false,
+        "locked": true
+      },
+      "view_media": {
+        "default": true,
+        "owner_can_toggle": false,
+        "locked": true
+      },
+      "leave_review": {
+        "default": true,
+        "owner_can_toggle": false,
+        "locked": true
+      }
+    }
+  },
+  "upgrade": {
+    "enabled": true,
+    "url": "https://YOUR_DOMAIN_HERE/upgrade",
+    "button_label": "Launch Your Own Practice",
+    "subtitle": "Get your own fully branded platform with all features unlocked."
+  },
+  "messaging": {
+    "attachments": [
+      "activity",
+      "media"
+    ]
+  }
+}

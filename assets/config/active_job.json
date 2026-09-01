@@ -1,0 +1,45 @@
+{
+  "id": "",
+  "label": "",
+  "description": "",
+  "primary_color": "#4CAF50",
+  "theme": {
+    "font_family": "rounded",
+    "card_radius": 16.0,
+    "button_radius": 24.0,
+    "input_radius": 12.0,
+    "appbar_style": "white",
+    "spacing_preset": "comfortable"
+  },
+  "terminology": {
+    "owner": "Owner",
+    "partner": "Partner",
+    "staff": "Staff",
+    "client": "Client",
+    "activity": "Session",
+    "activities": "Sessions",
+    "finance": "Revenue",
+    "team": "Team",
+    "media": "Content",
+    "catalog": "Shop"
+  },
+  "modules": {
+    "activity": true,
+    "finance": true,
+    "team": true,
+    "messaging": true,
+    "notifications": true,
+    "media": true,
+    "catalog": true,
+    "scheduling": true,
+    "reservations": true,
+    "reviews": true
+  },
+  "activity_fields": [
+    {"name": "title",    "label": "Session Name", "type": "text",     "required": true},
+    {"name": "date",     "label": "Date",          "type": "date",     "required": true},
+    {"name": "time",     "label": "Start Time",    "type": "time",     "required": true},
+    {"name": "duration", "label": "Duration (min)","type": "duration", "required": false},
+    {"name": "price",    "label": "Price",         "type": "currency", "required": true}
+  ]
+}
