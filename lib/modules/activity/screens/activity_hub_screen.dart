@@ -18,9 +18,6 @@ import 'package:personal_wellness_trainer/engine/permissions/permissions_engine.
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 import 'package:personal_wellness_trainer/modules/activity/providers/activity_notifier.dart';
 import 'package:personal_wellness_trainer/modules/activity/widgets/activity_status_badge.dart';
-import 'package:personal_wellness_trainer/modules/team/providers/team_notifier.dart';
-import 'package:personal_wellness_trainer/core/extensions/string_extensions.dart';
-import 'package:personal_wellness_trainer/engine/providers/chat_launcher_provider.dart';
 
 // ── Module card definitions ───────────────────────────────────────────────────
 
@@ -134,8 +131,6 @@ class _ActivityHubBody extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final activitiesAsync = ref.watch(activityNotifierProvider);
-    final jobConfig = ref.watch(activeJobConfigProvider);
-    final teamAsync = ref.watch(teamNotifierProvider);
 
     final List<_ModuleDef> kModules = [
       _ModuleDef(
@@ -211,98 +206,6 @@ class _ActivityHubBody extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
         children: [
           const SizedBox(height: AppSpacing.md),
-
-          // ── ZONE 2: PARTNERS CO-OP CAROUSEL 🤝 ──
-          if (role == AppRole.client)
-            teamAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (members) {
-                final partners = members.where((m) => m.role == 'partner').toList();
-                if (partners.isEmpty) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Dynamic wellness-focused heading: e.g. "Explore our Partner Studios"
-                    Text(
-                      'Explore our ${jobConfig.terminology.partner} Studios', // ◄ Fixed: Modified exactly as requested!
-                      style: AppTextStyles.titleMedium.copyWith(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: partners.length,
-                        itemBuilder: (context, index) {
-                          final p = partners[index];
-                          return Container(
-                            width: 220,
-                            margin: const EdgeInsets.only(right: AppSpacing.sm),
-                            child: Card(
-                              color: colorScheme.surfaceContainerLow,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                                side: BorderSide(color: colorScheme.outlineVariant.withAlpha(50)),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.sm),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: colorScheme.secondaryContainer,
-                                      child: Text(
-                                        p.displayName.avatarInitials,
-                                        style: AppTextStyles.labelSmall.copyWith(
-                                          color: colorScheme.onSecondaryContainer,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            p.displayName,
-                                            style: AppTextStyles.titleSmall.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: colorScheme.onSurface,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (p.categoryId != null)
-                                            Text(
-                                              p.categoryId!,
-                                              style: AppTextStyles.caption.copyWith(color: colorScheme.onSurfaceVariant),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                                      color: colorScheme.primary,
-                                      onPressed: () => _openDm(context, ref, p),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
-                );
-              },
-            ),
 
           // ── Recent activities list ──────────────────────────────────────
           activitiesAsync.when(
@@ -464,27 +367,6 @@ class _ActivityHubBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _openDm(BuildContext context, WidgetRef ref, dynamic partner) async {
-    final authState = ref.read(authNotifierProvider);
-    if (authState is! AuthAuthenticated) return;
-    final role = AppRole.fromString(authState.profile.role);
-
-    final conv = await ref.read(chatLauncherProvider).openDirect(
-          participantId: partner.userId as String,
-          participantName: partner.displayName as String,
-        );
-
-    if (conv == null || !context.mounted) return;
-
-    final routeName = switch (role) {
-      AppRole.owner   => RouteNames.ownerMessageThread,
-      AppRole.partner => RouteNames.partnerMessageThread,
-      AppRole.staff   => RouteNames.staffMessageThread,
-      AppRole.client  => RouteNames.clientMessageThread,
-    };
-
-    await context.pushNamed(routeName, extra: conv);
-  }
 }
 
 class _EmptyActivities extends StatelessWidget {

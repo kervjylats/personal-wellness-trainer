@@ -256,6 +256,58 @@ everything was verified for consistency: every file balances correctly,
 every import resolves, and every place that builds one of these three
 models was checked project-wide (not just the files directly edited).
 
+## Round 5 — fixes from actually running the app
+
+Four real issues found by testing the running app, not just reading code:
+
+- **Owner incorrectly saw the "Launch Your Own Practice" upgrade banner
+  and a locked Branding setting.** That whole concept only makes sense
+  for Partners (free tier, considering upgrading to their own business)
+  — an Owner already has full access by definition. Fixed the gating so
+  Owners never see either.
+- **"From Your Coach" was a redundant section inside the new Partners
+  tab** — clients already see their own coach's sessions/catalog/media
+  elsewhere, so showing it again inside "Partners" just added noise.
+  Removed — that tab is now purely about partner businesses.
+- **Client's separate Network tab got merged into Partners** — one tab
+  now covers both partner offers and contacts/inviting, instead of two
+  separate tabs covering overlapping ground.
+- **Partner's Network tab was invisible** — found the exact cause: the
+  underlying permission check required an explicit per-job grant for
+  Partners to see team/contact info, and no job type granted it by
+  default. Given a Partner fundamentally needs to see the Owner who
+  invited them and the shared client pool to do the job this role
+  exists for, made it an always-on capability instead, matching how
+  messaging/notifications already work for Partners. Also added the
+  actual invite button, which didn't exist on this screen at all before.
+
+## Round 6 — more from testing, plus a full trace of "upgrade to Pro"
+
+- **Removed a redundant, wrong-data-source "Explore our Partner Studios"
+  carousel from the Sessions tab.** It was showing the same in-business
+  Partner-role concept I already fixed elsewhere in this app (the wrong
+  "partner" — a role within your own business — not the marketplace
+  kind), and duplicated what the Partners tab now does correctly. Also
+  removed the now-fully-unused code that only existed to support it.
+- **Removed the Staff tab from a Partner's Network view.** A Partner
+  (before upgrading) is meant to have limited access — staff visibility
+  isn't part of that; they only need to see the Owner who invited them
+  and the shared client pool.
+- **Owner's Settings no longer shows the upgrade banner or a locked
+  Branding tile** — that whole concept is Partner-only; an Owner already
+  has full access by definition.
+
+### Traced "Partner upgrades to Pro" end to end
+
+Verified by reading the actual code (not assumed) that this works
+correctly: the app's router genuinely reacts to the role change and
+switches your shell to the full Owner view immediately, no re-login
+needed. Clients you personally invited as a Partner do get moved to
+your new business — confirmed by tracing the exact chain: invite link →
+`invitedByUserId` → new client's `primaryPartnerId` → migration on
+upgrade. Your original agreement with the Owner who invited you stays
+where it was, since that's a real, separate historical relationship.
+
 ## Getting this back to GitHub
 
 1. Extract this zip

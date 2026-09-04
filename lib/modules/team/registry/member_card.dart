@@ -17,7 +17,8 @@
 // getter on String from core/extensions/string_extensions.dart.
 // The private helper was 100% identical to copies in marketplace_screen,
 // client_dashboard_screen, network_screen, partner_services_screen, and
-// client_network_screen — all should be updated the same way.
+// discover_screen (formerly client_network_screen, merged in later) —
+// all should be updated the same way.
 
 import 'package:flutter/material.dart';
 import 'package:personal_wellness_trainer/core/extensions/string_extensions.dart';

@@ -81,7 +81,9 @@ things back to me.
 - [ ] **Notifications** — bell icon list loads, marking as read works
 - [ ] **Settings** — Own Business screen, Branding screen (color change
       propagates app-wide — this was a real bug I fixed, worth
-      double-checking)
+      double-checking); Owner should **not** see any "Launch Your Own
+      Practice" upgrade banner or a locked Branding tile — that's
+      Partner-only
 
 ## Partner checklist
 
@@ -91,9 +93,15 @@ things back to me.
       whatever the intended permission is — flag if it feels wrong)
 - [ ] **Finance** — partner-scoped view loads (should only show *their*
       numbers, not the owner's full business)
-- [ ] **Network** — can see the owner + staff, but should **not** see
-      other partners (this was specifically called out in the code as
-      intentional — worth confirming it's actually true)
+- [ ] **Network** — 2 tabs now: **Owner** and **Clients** (Staff removed
+      — a limited-tier Partner doesn't get that visibility, only the
+      owner who invited them + the shared client pool); on the
+      **Clients** tab, an invite button should appear (bottom-right) —
+      inviting a client here should add them to the same shared client
+      pool the owner sees too
+- [ ] **Upgrade to Pro** (Settings → Launch Your Own Practice) — see the
+      dedicated walkthrough below; briefly, confirm your shell switches
+      to the full Owner view immediately, no re-login needed
 - [ ] AppBar title shows the partner's own business name, not just "Partner"
 
 ## Staff checklist
@@ -109,12 +117,13 @@ things back to me.
 
 - [ ] **Dashboard** loads
 - [ ] **Activity Hub** — browse available classes/sessions
-- [ ] **Partners tab** (new) — see the dedicated walkthrough below for
-      the full flow; on its own, confirm the tab loads without crashing
-      even before any partnership exists (should show an empty-state
-      message, not an error)
-- [ ] **Network tab** (new) — see contacts (owner, partners, eligible
-      staff), invite button in the corner
+- [ ] **Partners tab** — one tab now covers both partner content and
+      contacts (merged from a separate Network tab). See the dedicated
+      walkthrough below for the full partner-content flow; on its own,
+      confirm it loads without crashing even before any partnership
+      exists (should show empty-state messages, not errors), shows your
+      contacts (owner, partners, eligible staff) further down, and has a
+      working invite button (bottom-right)
 - [ ] **Payments** — client-facing payment history loads
 - [ ] **Community Feed** — loads, can post/interact if that's supported
 - [ ] **Challenges** — list loads, can join one
@@ -149,9 +158,33 @@ above.
    a flat 20% — if you ever see exactly 20% on every single purchase
    regardless of what rate you set, that's the old bug and something
    broke)
-7. As **Client**, open the **Network** tab (new) → tap the **invite**
-   button (bottom-right) → generate a link → this represents inviting
-   another client to join the same coach
+7. As **Client**, on the **Partners** tab, scroll down to the **Network**
+   section → tap the **invite** button (bottom-right) → generate a link
+   → this represents inviting another client to join the same coach
+
+## Upgrade to Pro walkthrough (new)
+
+This is the "free Partner becomes their own independent Owner" flow —
+confirmed working end to end by reading the actual code, but worth
+testing for real too.
+
+1. As **Partner**, invite a client via **Network → Clients → invite
+   button** — generate the link and note it (or just trust the seeded
+   data already has some clients tied to you)
+2. Go to **Settings → Launch Your Own Practice** → confirm the upgrade
+3. Your shell should switch to the **full Owner view immediately** — no
+   sign-out/sign-in needed
+4. Check your new business's **Network → Clients** — any clients you
+   personally invited as a Partner should now appear here, under your
+   new independent business
+5. Note: your **original within-business agreement** (the commission
+   deal with the Owner who first invited you) stays exactly where it
+   was, under their business — upgrading doesn't erase or move that
+   historical relationship, which is intentional, not a bug
+6. Minor thing to be aware of, not a bug: because this is mock data, a
+   brand-new business with zero real staff/partners yet may show some
+   seeded placeholder names in Network — that's a mock-data-only
+   convenience, not something that'll happen with a real backend
 
 ## Known gaps — don't report these, I already know
 

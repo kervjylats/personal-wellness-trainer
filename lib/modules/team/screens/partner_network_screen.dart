@@ -22,6 +22,7 @@ import 'package:personal_wellness_trainer/data/models/team_member_model.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/modules/team/providers/team_notifier.dart';
 import 'package:personal_wellness_trainer/modules/team/widgets/chat_icon_button.dart';
+import 'package:personal_wellness_trainer/modules/team/widgets/invite_dialog.dart';
 
 class PartnerNetworkScreen extends ConsumerStatefulWidget {
   const PartnerNetworkScreen({super.key});
@@ -35,9 +36,12 @@ class _PartnerNetworkScreenState extends ConsumerState<PartnerNetworkScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // Partner's limited/free-tier view — no Staff tab. Staff belong to the
+  // owner's business; a partner (until they upgrade) doesn't need or get
+  // that visibility, only the owner who invited them plus the shared
+  // client pool they're building together.
   static const _tabs = [
     (label: 'Owner',  role: 'owner',  icon: Icons.business_outlined),
-    (label: 'Staff',  role: 'staff',  icon: Icons.badge_outlined),
     (label: 'Clients',role: 'client', icon: Icons.person_outline),
   ];
 
@@ -94,6 +98,18 @@ class _PartnerNetworkScreenState extends ConsumerState<PartnerNetworkScreen>
           }).toList(),
         ),
       ),
+      // Clients tab only (now index 1 — Owner=0, Clients=1, no Staff tab
+      // for a Partner's limited view).
+      floatingActionButton: _tabController.index == 1
+          ? FloatingActionButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => const InviteDialog(role: 'client'),
+              ),
+              tooltip: 'Invite a client',
+              child: const Icon(Icons.person_add_outlined),
+            )
+          : null,
     );
   }
 }

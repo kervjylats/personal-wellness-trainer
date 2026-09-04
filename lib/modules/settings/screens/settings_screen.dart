@@ -24,8 +24,6 @@ class SettingsScreen extends ConsumerWidget {
     final role = AppRole.fromString(profile.role);
     final config = ref.watch(configProvider).valueOrNull;
 
-    final isPremium = profile.planTier == 'premium';
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
       child: Column(
@@ -35,8 +33,8 @@ class SettingsScreen extends ConsumerWidget {
           const Text('Settings', style: AppTextStyles.headlineLarge),
           const SizedBox(height: AppSpacing.xxl),
 
-          // ── UPGRADE PROMPT (Gated for Non-Premium Owners AND all Partners) ─
-          if ((role.isOwner && !isPremium) || role.isPartner) ...[
+          // ── UPGRADE PROMPT (Partners only — Owners already have full access) ─
+          if (role.isPartner) ...[
             if (config != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -60,18 +58,14 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.goNamed(_profileRouteName(role)),
           ),
 
-          // ── Branding Section ───────────────────────────────────────────────
+          // ── Branding Section (always unlocked for owners) ────────────────────
           if (role.isOwner) ...[
             _SettingsTile(
-              icon: isPremium ? Icons.palette_outlined : Icons.lock_outline_rounded,
+              icon: Icons.palette_outlined,
               title: 'Branding & Design',
-              subtitle: isPremium 
-                  ? 'Customize brand colors and app terminology' 
-                  : 'Customize colors & design (Requires Premium)',
-              onTap: isPremium 
-                  ? () => context.goNamed(RouteNames.ownerBranding)
-                  : () => _showMockCheckoutDialog(context, ref, config),
-              isLocked: !isPremium,
+              subtitle: 'Customize brand colors and app terminology',
+              onTap: () => context.goNamed(RouteNames.ownerBranding),
+              isLocked: false,
             ),
           ],
 

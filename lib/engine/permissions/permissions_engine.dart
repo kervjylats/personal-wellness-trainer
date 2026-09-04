@@ -187,8 +187,13 @@ class PermissionsEngine {
     }
     if (role.isPartner) {
       if (moduleId == 'finance') return true;
+      // 'team' is always allowed for Partner — they need to see the
+      // Owner who invited them and the shared client pool to actually
+      // do the "offer services to the owner's clients, bring your own"
+      // partnership this role exists for. Not something to gate behind
+      // a configurable per-job permission.
       return _resolvePartnerFeature(profile, 'can_view_$moduleId') ||
-          ['messaging', 'notifications', 'activity'].contains(moduleId);
+          ['messaging', 'notifications', 'activity', 'team'].contains(moduleId);
     }
     if (role.isClient) {
       return ['activity', 'finance', 'messaging', 'notifications', 'team']

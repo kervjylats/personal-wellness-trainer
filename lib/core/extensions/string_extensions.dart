@@ -12,7 +12,8 @@
 //     - lib/modules/team/registry/member_card.dart
 //     - lib/modules/team/screens/network_screen.dart
 //     - lib/modules/team/screens/partner_services_screen.dart
-//     - lib/modules/team/screens/client_network_screen.dart
+//     - lib/modules/discover/screens/discover_screen.dart (formerly
+//       client_network_screen.dart, merged in later)
 //
 //   Migration: in every file above, delete the private `_initials` function
 //   and replace every call `_initials(name)` with `name.avatarInitials`.

@@ -11,7 +11,6 @@ import 'package:personal_wellness_trainer/modules/activity/providers/activity_ac
 import 'package:personal_wellness_trainer/modules/activity/screens/activity_hub_screen.dart';
 import 'package:personal_wellness_trainer/modules/dashboard/screens/client_dashboard_screen.dart';
 import 'package:personal_wellness_trainer/modules/discover/screens/discover_screen.dart';
-import 'package:personal_wellness_trainer/modules/team/screens/client_network_screen.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/finance_action_error_provider.dart';
 import 'package:personal_wellness_trainer/modules/finance/screens/client_payments_screen.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
@@ -58,7 +57,6 @@ class _ClientShellState extends ConsumerState<ClientShell> {
           const _ClientTab(id: 'dashboard', icon: Icons.home_outlined, label: 'Home'),
           _ClientTab(id: 'activity', icon: Icons.event_note_outlined, label: jobConfig.terminology.activities),
           const _ClientTab(id: 'discover', icon: Icons.explore_outlined, label: 'Partners'),
-          const _ClientTab(id: 'network', icon: Icons.people_outline, label: 'Network'),
           const _ClientTab(id: 'finance', icon: Icons.payments_outlined, label: 'Payments'), // ◄ Fixed: Hardcoded to Payments!
           const _ClientTab(id: 'settings', icon: Icons.settings_outlined, label: 'Settings'),
         ];
@@ -107,7 +105,6 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       case 'dashboard': return const ClientDashboardScreen();
       case 'activity':  return const ActivityHubScreen();
       case 'discover':  return const DiscoverScreen();
-      case 'network':   return const ClientNetworkScreen();
       case 'finance':   return const ClientPaymentsScreen();
       case 'settings':  return const SettingsScreen();
       default:          return const SizedBox.shrink();
