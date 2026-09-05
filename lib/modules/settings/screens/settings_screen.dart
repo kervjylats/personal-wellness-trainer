@@ -67,6 +67,13 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.goNamed(RouteNames.ownerBranding),
               isLocked: false,
             ),
+            _SettingsTile(
+              icon: Icons.tune_outlined,
+              title: 'Business Features',
+              subtitle: 'Turn Partnerships, Marketplace, and Deals on or off',
+              onTap: () => context.goNamed(RouteNames.ownerBusinessFeatures),
+              isLocked: false,
+            ),
           ],
 
           // ── Staff own business banner ──────────────────────────────────────

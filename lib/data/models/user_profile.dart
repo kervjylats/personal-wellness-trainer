@@ -42,6 +42,9 @@ class UserProfile {
     this.jobId,
     this.selectedCategory,
     this.currency,
+    this.partnersEnabled,
+    this.marketplaceEnabled,
+    this.agreementsEnabled,
     // Partner fields
     this.categoryId,
     this.agreementStatus,
@@ -92,6 +95,15 @@ class UserProfile {
   final String? jobId;
   final String? selectedCategory;
   final String? currency;
+
+  /// Business-wide toggles (meaningful on the Owner's row only — every
+  /// business member reads these off the Owner via businessFeaturesProvider,
+  /// same pattern as reading the Owner's businessName/primaryColor). Defaults
+  /// (via ?? true at every read site) keep pre-existing businesses fully
+  /// functional if this was never set.
+  final bool? partnersEnabled;
+  final bool? marketplaceEnabled;
+  final bool? agreementsEnabled;
 
   // ── Partner-Only Fields ───────────────────────────────────────────────────────
   final String? categoryId;
@@ -148,6 +160,9 @@ class UserProfile {
       jobId: json['job_id'] as String?,
       selectedCategory: json['selected_category'] as String?,
       currency: json['currency'] as String?,
+      partnersEnabled: json['partners_enabled'] as bool?,
+      marketplaceEnabled: json['marketplace_enabled'] as bool?,
+      agreementsEnabled: json['agreements_enabled'] as bool?,
       // Partner
       categoryId: json['category_id'] as String?,
       agreementStatus: json['agreement_status'] as String?,
@@ -195,6 +210,9 @@ class UserProfile {
       if (jobId != null) 'job_id': jobId,
       if (selectedCategory != null) 'selected_category': selectedCategory,
       if (currency != null) 'currency': currency,
+      if (partnersEnabled != null) 'partners_enabled': partnersEnabled,
+      if (marketplaceEnabled != null) 'marketplace_enabled': marketplaceEnabled,
+      if (agreementsEnabled != null) 'agreements_enabled': agreementsEnabled,
       // Partner
       if (categoryId != null) 'category_id': categoryId,
       if (agreementStatus != null) 'agreement_status': agreementStatus,
@@ -233,6 +251,9 @@ class UserProfile {
     String? jobId,
     String? selectedCategory,
     String? currency,
+    bool? partnersEnabled,
+    bool? marketplaceEnabled,
+    bool? agreementsEnabled,
     String? categoryId,
     String? agreementStatus,
     double? commissionRate,
@@ -264,6 +285,9 @@ class UserProfile {
       jobId: jobId ?? this.jobId,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       currency: currency ?? this.currency,
+      partnersEnabled: partnersEnabled ?? this.partnersEnabled,
+      marketplaceEnabled: marketplaceEnabled ?? this.marketplaceEnabled,
+      agreementsEnabled: agreementsEnabled ?? this.agreementsEnabled,
       categoryId: categoryId ?? this.categoryId,
       agreementStatus: agreementStatus ?? this.agreementStatus,
       commissionRate: commissionRate ?? this.commissionRate,

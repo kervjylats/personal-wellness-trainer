@@ -19,6 +19,7 @@ abstract final class RouteNames {
 
   // ── Settings ──────────────────────────────────────────────────────────────────
   static const String ownerBranding = 'owner-branding';
+  static const String ownerBusinessFeatures = 'owner-business-features';
   static const String ownBusiness = 'own-business';
 
   // Role-prefixed settings routes (GoRouter requires unique names across shells)
@@ -182,6 +183,7 @@ abstract final class RouteNames {
   static const String profilePath = 'profile';
   static const String controlPanelPath = 'control-panel';
   static const String brandingPath = 'branding';
+  static const String businessFeaturesPath = 'business-features';
   static const String preferencesPath = 'preferences';
   static const String ownBusinessPath = 'own-business';
   static const String marketplacePath = 'marketplace';

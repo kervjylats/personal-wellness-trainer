@@ -17,6 +17,7 @@ import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/modules/team/providers/team_notifier.dart';
+import 'package:personal_wellness_trainer/modules/team/providers/business_features_provider.dart';
 import 'package:personal_wellness_trainer/core/extensions/string_extensions.dart';
 import 'package:personal_wellness_trainer/modules/team/widgets/chat_icon_button.dart';
 import 'package:personal_wellness_trainer/modules/team/widgets/invite_dialog.dart';
@@ -102,14 +103,17 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen>
         controller: _tabController,
         children: _tabs.map((t) => _MemberTab(role: t.role)).toList(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showInviteDialog(
-          context,
-          _tabs[_tabController.index].role,
-        ),
-        tooltip: 'Invite',
-        child: const Icon(Icons.person_add_outlined),
-      ),
+      floatingActionButton: _tabs[_tabController.index].role == 'partner' &&
+              !ref.watch(businessFeaturesProvider).partnersEnabled
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showInviteDialog(
+                context,
+                _tabs[_tabController.index].role,
+              ),
+              tooltip: 'Invite',
+              child: const Icon(Icons.person_add_outlined),
+            ),
     );
   }
 
@@ -130,6 +134,9 @@ class _MemberTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(teamNotifierProvider);
+    final authState = ref.watch(authNotifierProvider);
+    final myUserId =
+        authState is AuthAuthenticated ? authState.profile.userId : null;
 
     return membersAsync.when(
       loading: () => const LoadingIndicator(),
@@ -138,12 +145,40 @@ class _MemberTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(teamNotifierProvider),
       ),
       data: (all) {
-        final members = all.where((m) => m.role == role).toList();
+        final features = ref.watch(businessFeaturesProvider);
+
+        // Partnerships turned off for this business entirely — show why,
+        // not an empty list that looks like a bug. Existing partners (if
+        // any predate the toggle flip) still function elsewhere; this just
+        // stops presenting the tab as if new ones can be added here.
+        if (role == 'partner' && !features.partnersEnabled) {
+          return const AppEmptyState(
+            icon: Icons.handshake_outlined,
+            headline: 'Partnerships are turned off',
+            subtext: 'This business has the Partnership system disabled.',
+          );
+        }
+
+        // Clients are scoped to whoever directly owns them (primaryPartnerId).
+        // A client invited through a Partner belongs to that Partner, not
+        // to this Owner — even though both currently share one businessId.
+        // Partners/Staff tabs stay business-wide (unchanged).
+        final members = role == 'client'
+            ? all
+                .where((m) =>
+                    m.role == 'client' && m.primaryPartnerId == myUserId)
+                .toList()
+            : all.where((m) => m.role == role).toList();
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(teamNotifierProvider),
           child: Column(
             children: [
-              if (role == 'partner') const _DiscoverPartnersBanner(),
+              if (role == 'partner' && features.marketplaceEnabled)
+                const _DiscoverPartnersBanner(),
+              if (role == 'partner' &&
+                  features.agreementsEnabled &&
+                  members.isNotEmpty)
+                const _ProposeDealBanner(),
               Expanded(
                 child: members.isEmpty
                     ? _EmptyTab(role: role)
@@ -214,6 +249,62 @@ class _DiscoverPartnersBanner extends StatelessWidget {
                   ),
                 ),
                 Icon(Icons.chevron_right, color: colorScheme.onPrimaryContainer),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Propose a deal banner (Partners tab, only when there's ≥1 partner) ──────────
+
+class _ProposeDealBanner extends StatelessWidget {
+  const _ProposeDealBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenPaddingH,
+        AppSpacing.md,
+        AppSpacing.screenPaddingH,
+        0,
+      ),
+      child: Material(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          onTap: () => context.pushNamed(RouteNames.ownerAgreementCreate),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Icon(Icons.handshake_outlined, color: colorScheme.onSecondaryContainer),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Propose a deal',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Set a commission split with one of your partners.',
+                        style: AppTextStyles.labelSmall
+                            .copyWith(color: colorScheme.onSecondaryContainer),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: colorScheme.onSecondaryContainer),
               ],
             ),
           ),

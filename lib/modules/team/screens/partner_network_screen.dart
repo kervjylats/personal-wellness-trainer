@@ -1,7 +1,22 @@
 // lib/modules/team/screens/partner_network_screen.dart
 //
 // The partner's view of the business network.
-// Shows owner, staff, and fellow clients. Partners cannot see other partners.
+//
+// A Partner (invited personally by an Owner, not yet upgraded to Pro) has
+// exactly one Owner — whoever invited them. That relationship is shown as
+// a small info card at the top of the screen, not as a browsable tab (a
+// list of one doesn't need a tab).
+//
+// Below it: the Partner's OWN clients only — i.e. clients whose
+// primaryPartnerId is this Partner's userId. A client invited through this
+// Partner belongs to the Partner, not to the Owner who invited the
+// Partner — ownership is per-direct-inviter, not shared with the Owner,
+// even while the Partner hasn't upgraded to Pro yet. See
+// mock_team_source.dart's _resolveClientOwnerId for how that chain
+// resolves on signup (including client-invites-client referrals).
+//
+// Partners cannot see Staff or other Partners — those stay scoped to the
+// Owner's side of the business.
 //
 // FIX 1: _MemberTile avatar now uses member.displayName.avatarInitials
 //         from string_extensions.dart instead of manually extracting [0].
@@ -19,97 +34,119 @@ import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/widgets/loading_indicator.dart';
 import 'package:personal_wellness_trainer/data/models/team_member_model.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/modules/team/providers/team_notifier.dart';
 import 'package:personal_wellness_trainer/modules/team/widgets/chat_icon_button.dart';
 import 'package:personal_wellness_trainer/modules/team/widgets/invite_dialog.dart';
 
-class PartnerNetworkScreen extends ConsumerStatefulWidget {
+class PartnerNetworkScreen extends ConsumerWidget {
   const PartnerNetworkScreen({super.key});
 
   @override
-  ConsumerState<PartnerNetworkScreen> createState() =>
-      _PartnerNetworkScreenState();
-}
-
-class _PartnerNetworkScreenState extends ConsumerState<PartnerNetworkScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  // Partner's limited/free-tier view — no Staff tab. Staff belong to the
-  // owner's business; a partner (until they upgrade) doesn't need or get
-  // that visibility, only the owner who invited them plus the shared
-  // client pool they're building together.
-  static const _tabs = [
-    (label: 'Owner',  role: 'owner',  icon: Icons.business_outlined),
-    (label: 'Clients',role: 'client', icon: Icons.person_outline),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(_onTabChanged);
-  }
-
-  void _onTabChanged() {
-    if (!mounted) return;
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final config       = ref.watch(configProvider).valueOrNull;
     final networkLabel = config?.industry.terminology.network ?? 'Network';
     final membersAsync = ref.watch(teamNotifierProvider);
+    final authState     = ref.watch(authNotifierProvider);
+    final myUserId =
+        authState is AuthAuthenticated ? authState.profile.userId : null;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(networkLabel),
         automaticallyImplyLeading: false,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: _tabs.map((t) => Tab(
-            icon: Icon(t.icon, size: 18),
-            text: t.label,
-            iconMargin: const EdgeInsets.only(bottom: 2),
-          )).toList(),
-          labelStyle: AppTextStyles.labelSmall,
-        ),
       ),
       body: membersAsync.when(
         loading: () => const LoadingIndicator(),
         error:   (e, _) => Center(child: Text('$e')),
-        data: (all) => TabBarView(
-          controller: _tabController,
-          children: _tabs.map((t) {
-            final members = all.where((m) => m.role == t.role).toList();
-            return _MemberList(
-              members:    members,
-              emptyLabel: 'No ${t.label.toLowerCase()} yet.',
-            );
-          }).toList(),
+        data: (all) {
+          final owner = _findOwner(all);
+          final myClients = all
+              .where((m) => m.role == 'client' && m.primaryPartnerId == myUserId)
+              .toList();
+
+          return Column(
+            children: [
+              if (owner != null) _OwnerCard(owner: owner),
+              Expanded(
+                child: _MemberList(
+                  members:    myClients,
+                  emptyLabel: 'No clients yet.',
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => const InviteDialog(role: 'client'),
+        ),
+        tooltip: 'Invite a client',
+        child: const Icon(Icons.person_add_outlined),
+      ),
+    );
+  }
+
+  TeamMemberModel? _findOwner(List<TeamMemberModel> all) {
+    for (final m in all) {
+      if (m.role == 'owner') return m;
+    }
+    return null;
+  }
+}
+
+// ── Owner card (non-tab — a Partner only ever has one Owner) ────────────────────
+
+class _OwnerCard extends ConsumerWidget {
+  const _OwnerCard({required this.owner});
+  final TeamMemberModel owner;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenPaddingH,
+        AppSpacing.md,
+        AppSpacing.screenPaddingH,
+        AppSpacing.sm,
+      ),
+      child: Material(
+        color: AppColors.grey50,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.cardPadding),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Text(
+                  owner.displayName.avatarInitials,
+                  style: AppTextStyles.titleSmall.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Owner', style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    )),
+                    Text(owner.displayName, style: AppTextStyles.bodyMedium),
+                  ],
+                ),
+              ),
+              ChatIconButton(member: owner),
+            ],
+          ),
         ),
       ),
-      // Clients tab only (now index 1 — Owner=0, Clients=1, no Staff tab
-      // for a Partner's limited view).
-      floatingActionButton: _tabController.index == 1
-          ? FloatingActionButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => const InviteDialog(role: 'client'),
-              ),
-              tooltip: 'Invite a client',
-              child: const Icon(Icons.person_add_outlined),
-            )
-          : null,
     );
   }
 }
@@ -167,5 +204,3 @@ class _MemberTile extends ConsumerWidget {
     );
   }
 }
-
-

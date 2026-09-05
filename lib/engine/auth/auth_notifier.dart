@@ -195,6 +195,37 @@ class AuthNotifier extends Notifier<AuthState> {
     AppLogger.info('Mock Billing: Account upgraded to Premium!', tag: _tag);
   }
 
+  /// Owner-only. Updates this business's feature toggles (Partnerships /
+  /// Marketplace / Agreements) and pushes the change through to the shared
+  /// team roster too — not just this device's own AuthState — so every
+  /// other member of the business sees it immediately on their own Network
+  /// screen. Mirrors upgradeToPremium()'s pattern of mutating both stores.
+  Future<void> updateBusinessFeatures({
+    bool? partnersEnabled,
+    bool? marketplaceEnabled,
+    bool? agreementsEnabled,
+  }) async {
+    if (state is! AuthAuthenticated) return;
+    final current = state as AuthAuthenticated;
+    if (current.profile.role != 'owner') return;
+
+    final updated = current.profile.copyWith(
+      partnersEnabled: partnersEnabled,
+      marketplaceEnabled: marketplaceEnabled,
+      agreementsEnabled: agreementsEnabled,
+    );
+
+    state = AuthAuthenticated(profile: updated, isNewOwner: current.isNewOwner);
+
+    MockTeamSource().updateBusinessFeatures(
+      current.profile.userId,
+      partnersEnabled: partnersEnabled,
+      marketplaceEnabled: marketplaceEnabled,
+      agreementsEnabled: agreementsEnabled,
+    );
+    AppLogger.info('Business Features updated', tag: _tag);
+  }
+
   Future<void> devQuickSignIn({
     required String jobId,
     required String jobLabel,

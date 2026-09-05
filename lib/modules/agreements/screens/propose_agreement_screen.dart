@@ -22,6 +22,8 @@ import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/modules/agreements/providers/agreements_notifier.dart';
+import 'package:personal_wellness_trainer/modules/team/providers/business_features_provider.dart';
+import 'package:personal_wellness_trainer/core/widgets/app_empty_state.dart';
 
 // ── Private partner data provider ─────────────────────────────────────────────
 //
@@ -79,6 +81,23 @@ class _ProposeAgreementScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Defensive re-check — see marketplace_screen.dart's identical guard
+    // for why: nav already hides the entry point, this just stops a stale
+    // deep link or a flag flip from a live session actually rendering the
+    // form. Only Owners reach this screen at all, and the notifier-level
+    // gate in agreements_notifier.dart backs this up either way.
+    final features = ref.watch(businessFeaturesProvider);
+    if (!features.partnersEnabled || !features.agreementsEnabled) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Propose Agreement')),
+        body: const AppEmptyState(
+          icon: Icons.receipt_long_outlined,
+          headline: 'Agreements are turned off',
+          subtext: 'This business has Agreements & Deals disabled.',
+        ),
+      );
+    }
+
     final config        = ref.watch(configProvider).valueOrNull;
     final categories    = config?.industry.categories ?? [];
     final partnersAsync = ref.watch(_activePartnersProvider);

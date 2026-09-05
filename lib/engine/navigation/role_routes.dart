@@ -23,6 +23,7 @@ import 'package:personal_wellness_trainer/modules/activity/screens/activity_deta
 import 'package:personal_wellness_trainer/modules/activity/screens/create_activity_screen.dart';
 import 'package:personal_wellness_trainer/modules/agreements/screens/agreement_detail_screen.dart';
 import 'package:personal_wellness_trainer/modules/agreements/screens/marketplace_screen.dart';
+import 'package:personal_wellness_trainer/modules/agreements/screens/propose_agreement_screen.dart';
 import 'package:personal_wellness_trainer/modules/catalog/screens/catalog_list_screen.dart';
 import 'package:personal_wellness_trainer/modules/challenges/screens/challenge_list_screen.dart';
 import 'package:personal_wellness_trainer/modules/chat/screens/chat_room_screen.dart';
@@ -40,6 +41,7 @@ import 'package:personal_wellness_trainer/modules/reservations/screens/reservati
 import 'package:personal_wellness_trainer/modules/reviews/screens/review_list_screen.dart';
 import 'package:personal_wellness_trainer/modules/scheduling/screens/schedule_screen.dart';
 import 'package:personal_wellness_trainer/modules/settings/screens/branding_screen.dart';
+import 'package:personal_wellness_trainer/modules/settings/screens/business_features_screen.dart';
 import 'package:personal_wellness_trainer/modules/settings/screens/own_business_screen.dart';
 import 'package:personal_wellness_trainer/modules/settings/screens/profile_screen.dart';
 import 'package:personal_wellness_trainer/modules/team/screens/member_profile_screen.dart';
@@ -94,6 +96,15 @@ List<RouteBase> ownerRoutes() => [
             builder: (_, __) => const MarketplaceScreen(),
           ),
           GoRoute(
+            // Owner-only, by design: proposing a NEW agreement is an Owner
+            // right. A non-Pro Partner can still reach agreement DETAIL
+            // (above) to approve/decline one already proposed to them —
+            // this route is deliberately absent from partnerRoutes().
+            path: RouteNames.agreementCreatePath,
+            name: RouteNames.ownerAgreementCreate,
+            builder: (_, __) => const ProposeAgreementScreen(),
+          ),
+          GoRoute(
             path: RouteNames.messageListPath,
             name: RouteNames.ownerMessageList,
             builder: (_, __) => const ConversationsListScreen(),
@@ -125,6 +136,11 @@ List<RouteBase> ownerRoutes() => [
             path: RouteNames.brandingPath,
             name: RouteNames.ownerBranding,
             builder: (_, __) => const BrandingScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.businessFeaturesPath,
+            name: RouteNames.ownerBusinessFeatures,
+            builder: (_, __) => const BusinessFeaturesScreen(),
           ),
           GoRoute(
             path: RouteNames.ownBusinessPath,

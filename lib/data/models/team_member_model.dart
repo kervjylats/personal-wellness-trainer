@@ -14,6 +14,13 @@ class TeamMemberModel {
     this.photoUrl,
     this.inviteToken,
     this.primaryPartnerId, // ◄ Added to track client referrals for partner spin-offs
+    // Business-level toggles — only meaningful on the owner's own row. See
+    // businessFeaturesProvider, which reads these off _findOwner(all)
+    // rather than off the currently-signed-in member's own row, since this
+    // is a business-wide setting, not a personal one.
+    this.partnersEnabled,
+    this.marketplaceEnabled,
+    this.agreementsEnabled,
   });
 
   final String userId;
@@ -28,6 +35,9 @@ class TeamMemberModel {
   final String? photoUrl;
   final String? inviteToken;
   final String? primaryPartnerId; // ◄ Nullable field for tracking
+  final bool? partnersEnabled;
+  final bool? marketplaceEnabled;
+  final bool? agreementsEnabled;
 
   factory TeamMemberModel.fromJson(Map<String, dynamic> json) {
     return TeamMemberModel(
@@ -45,6 +55,9 @@ class TeamMemberModel {
       photoUrl: json['photo_url'] as String?,
       inviteToken: json['invite_token'] as String?,
       primaryPartnerId: json['primary_partner_id'] as String?,
+      partnersEnabled: json['partners_enabled'] as bool?,
+      marketplaceEnabled: json['marketplace_enabled'] as bool?,
+      agreementsEnabled: json['agreements_enabled'] as bool?,
     );
   }
 
@@ -62,6 +75,9 @@ class TeamMemberModel {
       if (photoUrl != null) 'photo_url': photoUrl,
       if (inviteToken != null) 'invite_token': inviteToken,
       if (primaryPartnerId != null) 'primary_partner_id': primaryPartnerId,
+      if (partnersEnabled != null) 'partners_enabled': partnersEnabled,
+      if (marketplaceEnabled != null) 'marketplace_enabled': marketplaceEnabled,
+      if (agreementsEnabled != null) 'agreements_enabled': agreementsEnabled,
     };
   }
 
@@ -78,6 +94,9 @@ class TeamMemberModel {
     String? photoUrl,
     String? inviteToken,
     String? primaryPartnerId,
+    bool? partnersEnabled,
+    bool? marketplaceEnabled,
+    bool? agreementsEnabled,
   }) {
     return TeamMemberModel(
       userId: userId ?? this.userId,
@@ -92,6 +111,9 @@ class TeamMemberModel {
       photoUrl: photoUrl ?? this.photoUrl,
       inviteToken: inviteToken ?? this.inviteToken,
       primaryPartnerId: primaryPartnerId ?? this.primaryPartnerId,
+      partnersEnabled: partnersEnabled ?? this.partnersEnabled,
+      marketplaceEnabled: marketplaceEnabled ?? this.marketplaceEnabled,
+      agreementsEnabled: agreementsEnabled ?? this.agreementsEnabled,
     );
   }
 }

@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
+import 'package:personal_wellness_trainer/core/widgets/app_empty_state.dart';
 import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/error_display.dart';
 import 'package:personal_wellness_trainer/core/widgets/loading_indicator.dart';
@@ -23,6 +24,7 @@ import 'package:personal_wellness_trainer/modules/agreements/providers/agreement
 import 'package:personal_wellness_trainer/modules/agreements/providers/marketplace_notifier.dart';
 import 'package:personal_wellness_trainer/modules/agreements/screens/marketplace_profile_card.dart';
 import 'package:personal_wellness_trainer/modules/agreements/widgets/availability_card.dart';
+import 'package:personal_wellness_trainer/modules/team/providers/business_features_provider.dart';
 import 'package:personal_wellness_trainer/core/extensions/string_extensions.dart';
 
 class MarketplaceScreen extends ConsumerWidget {
@@ -44,6 +46,22 @@ class MarketplaceScreen extends ConsumerWidget {
 
     final config = ref.watch(configProvider).valueOrNull;
     final partnerTerm = config?.industry.terminology.partner ?? 'Partner';
+
+    // Defensive re-check: nav already hides the entry point to this screen
+    // when Partners/Marketplace are off, but a stale deep link or a flag
+    // flipped mid-session (another tab, another device) could still land
+    // someone here. Don't let the screen half-render past that.
+    final features = ref.watch(businessFeaturesProvider);
+    if (!features.partnersEnabled || !features.marketplaceEnabled) {
+      return Scaffold(
+        appBar: AppBar(title: Text('$partnerTerm Marketplace')),
+        body: const AppEmptyState(
+          icon: Icons.travel_explore_outlined,
+          headline: 'Marketplace is turned off',
+          subtext: 'This business has the Partnership Marketplace disabled.',
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

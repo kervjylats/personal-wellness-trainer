@@ -20,6 +20,8 @@ import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/widgets/dashboard_count_chip.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/engine/providers/dashboard_refresh_bus.dart';
 import 'package:personal_wellness_trainer/modules/team/providers/team_notifier.dart';
@@ -39,6 +41,9 @@ class OwnerTeamCountSlot extends ConsumerWidget {
     final teamAsync = ref.watch(teamNotifierProvider);
     final config = ref.watch(configProvider).valueOrNull;
     final term = config?.industry.terminology;
+    final authState = ref.watch(authNotifierProvider);
+    final myUserId =
+        authState is AuthAuthenticated ? authState.profile.userId : null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -75,7 +80,14 @@ class OwnerTeamCountSlot extends ConsumerWidget {
                 final partners =
                     members.where((m) => m.role == 'partner').length;
                 final staff = members.where((m) => m.role == 'staff').length;
-                final clients = members.where((m) => m.role == 'client').length;
+                // Scoped to clients this Owner directly owns — a client
+                // brought in through a Partner belongs to that Partner,
+                // not to this count. Matches the same ownership rule
+                // applied in network_screen.dart's Clients tab.
+                final clients = members
+                    .where((m) =>
+                        m.role == 'client' && m.primaryPartnerId == myUserId)
+                    .length;
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [

@@ -79,6 +79,20 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
     required double partnerCommissionPct,
     String? notes,
   }) async {
+    // ── Role gate ──────────────────────────────────────────────────────────────
+    // Only Owners (Pro) can initiate a deal. A non-Pro Partner can discuss,
+    // accept, or decline an agreement already on the table (see
+    // approveAgreement/declineAgreement below) but never propose one — that
+    // right only exists once they've upgraded to Pro and become an Owner
+    // themselves.
+    final authForGate = ref.read(authNotifierProvider);
+    if (authForGate is! AuthAuthenticated || authForGate.profile.role != 'owner') {
+      ref.read(agreementActionErrorProvider.notifier).state =
+          'Only Owners can propose a new agreement. Partners can discuss, '
+          'accept, or decline agreements already proposed to them.';
+      return null;
+    }
+
     // ── Compatibility check (Blueprint §14 — compatibility_matrix is authority) ──
     final engine = ref.read(permissionsEngineProvider);
     final compatible = engine.areCategoriesCompatible(

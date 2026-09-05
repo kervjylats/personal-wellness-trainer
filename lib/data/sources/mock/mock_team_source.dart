@@ -20,6 +20,26 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
     }
   }
 
+  /// Persists a Business Features toggle change so every other member of
+  /// the business (not just the Owner's own device) sees it — the roster
+  /// (`getMembers`) is the shared read path everyone's Network screen and
+  /// nav gating already go through. AuthNotifier.updateBusinessFeatures
+  /// calls this alongside updating its own local AuthState.
+  void updateBusinessFeatures(
+    String ownerUserId, {
+    bool? partnersEnabled,
+    bool? marketplaceEnabled,
+    bool? agreementsEnabled,
+  }) {
+    final i = _store.indexWhere((m) => m.userId == ownerUserId);
+    if (i == -1) return;
+    _store[i] = _store[i].copyWith(
+      partnersEnabled: partnersEnabled,
+      marketplaceEnabled: marketplaceEnabled,
+      agreementsEnabled: agreementsEnabled,
+    );
+  }
+
   @override
   Future<List<TeamMemberModel>> getMembers(
     String businessId, {
@@ -62,10 +82,37 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
       categoryId: categoryId,
       email: email,
       inviteToken: 'tok_mock_${_idCounter.toString().padLeft(3, '0')}',
-      primaryPartnerId: role == 'client' ? invitedByUserId : null,
+      primaryPartnerId:
+          role == 'client' ? _resolveClientOwnerId(invitedByUserId) : null,
     );
     _store.add(member);
     return member;
+  }
+
+  // ── Ownership-chain resolution ──────────────────────────────────────────────
+  //
+  // primaryPartnerId on a client always means "the direct owner of this
+  // client" — the Owner or Partner (Pro or not) who is ultimately
+  // responsible for them. It is NOT necessarily the person who physically
+  // tapped "invite".
+  //
+  // Two cases when a new client signs up via someone's invite link:
+  //   1. Inviter is an Owner or a Partner → the inviter themselves becomes
+  //      the new client's owner (invitedByUserId is used as-is).
+  //   2. Inviter is another Client → ownership does NOT stop at that
+  //      client. It inherits straight up to THAT client's own owner, so
+  //      referral chains always resolve to a single root Owner/Partner.
+  //      e.g. Jim (owner) → Tom (Jim's client) → Tom invites Sarah →
+  //      Sarah's owner is Jim, not Tom.
+  String _resolveClientOwnerId(String invitedByUserId) {
+    final inviterIndex = _store.indexWhere((m) => m.userId == invitedByUserId);
+    if (inviterIndex == -1) return invitedByUserId;
+
+    final inviter = _store[inviterIndex];
+    if (inviter.role == 'client') {
+      return inviter.primaryPartnerId ?? invitedByUserId;
+    }
+    return invitedByUserId;
   }
 
   @override
@@ -120,6 +167,25 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
   static List<TeamMemberModel> _buildSeedData() {
     final base = DateTime(2025, 1, 15);
     return [
+      // Mirrors MockProfiles.ownerProfile (usr_owner_001 / 'Alex Owner').
+      // Without a roster entry here, no screen reading the team roster
+      // (getMembers) could ever resolve "the Owner" — which is exactly
+      // why the Partner's Network screen showed "No owner yet." before
+      // this fix, even though the Owner profile itself always existed.
+      TeamMemberModel(
+        userId: 'usr_owner_001',
+        businessId: _businessId,
+        role: 'owner',
+        displayName: 'Alex Owner',
+        isActive: true,
+        joinedAt: DateTime(2024, 1, 15),
+        categoryId: 'cat_1',
+        email: 'owner@test.com',
+        featureToggles: const {},
+        partnersEnabled: true,
+        marketplaceEnabled: true,
+        agreementsEnabled: true,
+      ),
       TeamMemberModel(
         userId: 'usr_partner_001',
         businessId: _businessId,
@@ -173,7 +239,26 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
         isActive: true,
         joinedAt: base,
         email: 'client1@mock.com',
+        // Owned by Partner 001 — not by the Owner. See _resolveClientOwnerId:
+        // a partner's clients stay theirs even before they upgrade to Pro.
         primaryPartnerId: 'usr_partner_001',
+        featureToggles: const {
+          'can_book_activity': true,
+          'can_view_free_media': true,
+          'can_purchase_media': true,
+        },
+      ),
+      TeamMemberModel(
+        userId: 'usr_client_002',
+        businessId: _businessId,
+        role: 'client',
+        displayName: 'Riley Client',
+        isActive: true,
+        joinedAt: base,
+        email: 'client2@mock.com',
+        // Owned directly by the Owner (usr_owner_001) — invited straight
+        // by the business, not through a Partner.
+        primaryPartnerId: 'usr_owner_001',
         featureToggles: const {
           'can_book_activity': true,
           'can_view_free_media': true,

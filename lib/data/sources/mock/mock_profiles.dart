@@ -60,6 +60,11 @@ abstract final class MockProfiles {
     // a real job so all terminology, activity fields, and module flags are live.
     // Swap this to any valid id from jobs_config.json to test a different job.
     jobId: 'yoga_studio',
+    // All on by default — matches pre-existing behaviour for anyone who
+    // hasn't touched the new Business Features settings screen.
+    partnersEnabled: true,
+    marketplaceEnabled: true,
+    agreementsEnabled: true,
   );
 
   static final UserProfile partnerProfile = UserProfile(

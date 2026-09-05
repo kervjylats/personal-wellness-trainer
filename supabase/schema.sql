@@ -25,6 +25,17 @@ create table public.profiles (
     selected_category text,
     currency text not null default '$',
     branding_override jsonb, 
+
+    -- Business-level feature toggles (owner rows only). Buyer/dev-facing
+    -- controls: an Owner's end-client may not want the Partnership system
+    -- at all, or wants Partners but not the cross-business Marketplace, or
+    -- wants everything. Read off the OWNER's row by every business member
+    -- (see businessFeaturesProvider) since it's a business-wide setting,
+    -- not a personal one. Defaulting to true preserves today's behaviour
+    -- for anyone who never touches this settings screen.
+    partners_enabled boolean not null default true,
+    marketplace_enabled boolean not null default true,
+    agreements_enabled boolean not null default true,
     
     -- Partner specific fields
     category_id text,
