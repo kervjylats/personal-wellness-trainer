@@ -40,6 +40,56 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
     );
   }
 
+  /// Upsert: guarantees a real, persisted 'owner' roster row exists for a
+  /// business the moment its Owner exists — whether that's from real
+  /// signUp()/completeOnboarding() or devQuickSignIn().
+  ///
+  /// BUG THIS FIXES: without this, NOTHING ever creates an owner roster
+  /// row. signUp() and completeOnboarding() only ever touch the
+  /// UserProfile (auth) side, never this store. That means a brand new
+  /// business's businessId never matches anything here, so every call to
+  /// getMembers() for it falls into the "Dynamic Fallback" below, which
+  /// clones the ENTIRE biz_mock_001 seed roster (owner, both partners,
+  /// staff, both clients) onto whatever businessId asked — meaning a
+  /// freshly signed-up Owner would immediately see a partner and clients
+  /// they never invited. Worse, updateBusinessFeatures() above silently
+  /// no-ops for them (no real row to find), so the Business Features
+  /// toggle screen looks like it worked for one frame then reverts.
+  ///
+  /// Safe to call repeatedly: updates displayName/categoryId in place if
+  /// the row already exists, rather than duplicating it.
+  void ensureOwnerRow({
+    required String userId,
+    required String businessId,
+    required String displayName,
+    String? categoryId,
+    String? email,
+  }) {
+    final i = _store.indexWhere((m) => m.userId == userId);
+    if (i != -1) {
+      _store[i] = _store[i].copyWith(
+        businessId: businessId,
+        displayName: displayName,
+        categoryId: categoryId,
+      );
+      return;
+    }
+    _store.add(TeamMemberModel(
+      userId: userId,
+      businessId: businessId,
+      role: 'owner',
+      displayName: displayName,
+      isActive: true,
+      joinedAt: DateTime.now(),
+      categoryId: categoryId,
+      email: email,
+      featureToggles: const {},
+      partnersEnabled: true,
+      marketplaceEnabled: true,
+      agreementsEnabled: true,
+    ));
+  }
+
   @override
   Future<List<TeamMemberModel>> getMembers(
     String businessId, {
@@ -49,7 +99,12 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
     
     final matches = _store.where((m) => m.businessId == businessId && (role == null || m.role == role)).toList();
     if (matches.isEmpty) {
-      // Dynamic Fallback: Clone seed partners & staff to the active businessId
+      // Dynamic Fallback: Clone seed partners & staff to the active businessId.
+      // NOTE: with ensureOwnerRow() now called from signUp(), completeOnboarding(),
+      // and devQuickSignIn(), every real Owner path leaves at least one genuine
+      // match (their own row) before getMembers() is ever called — so this
+      // fallback should no longer trigger in normal use. Left in place as a
+      // safety net rather than removed.
       return _store
           .map((m) => m.copyWith(businessId: businessId))
           .where((m) => role == null || m.role == role)

@@ -88,6 +88,14 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       
       final updatedProfile = profile.copyWith(role: role);
+      if (role == AppConstants.roleOwner) {
+        MockTeamSource().ensureOwnerRow(
+          userId: updatedProfile.userId,
+          businessId: updatedProfile.businessId,
+          displayName: updatedProfile.displayName,
+          email: updatedProfile.email,
+        );
+      }
       state = AuthAuthenticated(profile: updatedProfile, isNewOwner: role == 'owner');
       AppLogger.info('Sign-up complete: ${updatedProfile.displayName}', tag: _tag);
     } catch (e, st) {
@@ -112,6 +120,18 @@ class AuthNotifier extends Notifier<AuthState> {
         primaryColor: primaryColorHex,
         jobId: jobId ?? category,
       );
+
+      // Keep the roster row (created at signUp time) in sync now that
+      // categoryId/displayName are finally known.
+      if (updatedProfile.role == AppConstants.roleOwner) {
+        MockTeamSource().ensureOwnerRow(
+          userId: updatedProfile.userId,
+          businessId: updatedProfile.businessId,
+          displayName: updatedProfile.businessName ?? updatedProfile.displayName,
+          categoryId: category,
+          email: updatedProfile.email,
+        );
+      }
 
       await _repository.setOnboardingComplete(
         current.profile.userId,
@@ -271,6 +291,16 @@ class AuthNotifier extends Notifier<AuthState> {
         jobId: jobId,
         selectedCategory: jobId,
         primaryColor: '#2471A3',
+      );
+      // Without this, this dev Owner's Network screen and Business
+      // Features toggles silently misbehave exactly like a real fresh
+      // signup did before ensureOwnerRow existed.
+      MockTeamSource().ensureOwnerRow(
+        userId: profile.userId,
+        businessId: profile.businessId,
+        displayName: profile.businessName ?? profile.displayName,
+        categoryId: jobId,
+        email: profile.email,
       );
     }
 

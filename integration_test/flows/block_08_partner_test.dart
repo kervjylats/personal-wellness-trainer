@@ -37,7 +37,9 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
       await r.devSignInAsRole('partner');
       await r.tapText('Network');
       await r.wait();
-      // Partners should NOT see a "Partners" tab — they see Owner/Staff/Clients
+      // Partners should NOT see a "Partners" tab — they see their one
+      // Owner (as a small info card, not a tab) plus their own Clients
+      // list underneath it. No Staff tab either — that stays Owner-side.
       final hasPartnersTab = r.existsText('Partners');
       rec('08_03 Partner no Partners tab', !hasPartnersTab,
           !hasPartnersTab ? null : 'Partners tab should not be visible for partner role');
@@ -72,16 +74,22 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
     } catch (e) { rec('08_05 Partner agreements loads', false, '$e'); }
   });
 
-  testWidgets('08_06 — Partner can access discover/marketplace', (t) async {
+  testWidgets('08_06 — Partner has no Marketplace/Discover access yet', (t) async {
     try {
       app.main(); await t.pumpAndSettle(const Duration(seconds: 3));
       final r = AppRobot(t);
       await r.devSignInAsRole('partner');
-      final found = await r.tapText('Discover') || await r.tapText('Marketplace');
-      await r.wait();
-      rec('08_06 Partner discovers marketplace', found,
-          found ? null : 'Marketplace not accessible for partner');
+      // By design (see business_features_provider.dart / marketplace_screen.dart):
+      // the Marketplace is for two already-Pro Owners discovering each
+      // other. A non-Pro Partner isn't an independent business yet, so
+      // they have nothing to offer there — this should be ABSENT until
+      // they upgrade to Pro and become an Owner themselves. This test
+      // used to assert the opposite (that Partners SHOULD have this),
+      // which never matched the intended design.
+      final hasMarketplaceAccess = r.existsText('Discover') || r.existsText('Marketplace');
+      rec('08_06 Partner has no marketplace access', !hasMarketplaceAccess,
+          !hasMarketplaceAccess ? null : 'Partner should not see Discover/Marketplace before upgrading to Pro');
       await r.signOut();
-    } catch (e) { rec('08_06 Partner discovers marketplace', false, '$e'); }
+    } catch (e) { rec('08_06 Partner has no marketplace access', false, '$e'); }
   });
 }

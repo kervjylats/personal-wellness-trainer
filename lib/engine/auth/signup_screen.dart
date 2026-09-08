@@ -1,8 +1,20 @@
 // lib/engine/auth/signup_screen.dart
+//
+// Owner-only. This is how a brand-new business gets started — someone has
+// to be first, so an Owner signing up with no invite is correct, intended
+// behavior. Partners and Clients are deliberately NOT offered here: every
+// Partner/Client is supposed to arrive via an invite link from an actual
+// business (see mock_team_source.dart's _resolveClientOwnerId for why —
+// ownership resolves through who directly invited someone, which has no
+// meaning for a self-serve signup with no inviter at all). This screen
+// used to offer a Client/Partner toggle with no invite context behind it,
+// which broke that model; removed rather than built out further, since an
+// invite link is the only path either role is meant to use.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:personal_wellness_trainer/core/constants/app_constants.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
@@ -27,9 +39,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  
-  // Set default signup role as 'client'
-  String _selectedRole = 'client';
 
   @override
   void dispose() {
@@ -47,7 +56,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           email: _emailController.text,
           password: _passwordController.text,
           displayName: _nameController.text,
-          role: _selectedRole, // ◄ Passes 'client' or 'partner' dynamically
+          role: AppConstants.roleOwner,
         );
   }
 
@@ -80,11 +89,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 children: [
                   _SignUpHeader(appName: appName, theme: theme),
                   const SizedBox(height: AppSpacing.xl),
-                  _RoleSelector(
-                    selectedRole: _selectedRole,
-                    onChanged: (role) => setState(() => _selectedRole = role),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
                   _SignUpForm(
                     formKey:          _formKey,
                     nameController:   _nameController,
@@ -97,6 +101,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     onSignUp:         _signUp,
                     onBackToLogin:    () => context.goNamed(RouteNames.login),
                   ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const _JoinExistingBusinessNote(),
                 ],
               ),
             ),
@@ -119,35 +125,15 @@ class _SignUpHeader extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: AppSpacing.md),
-        Icon(Icons.person_add_outlined, size: AppSpacing.iconSizeXxl,
+        Icon(Icons.storefront_outlined, size: AppSpacing.iconSizeXxl,
              color: theme.colorScheme.primary),
         const SizedBox(height: AppSpacing.md),
-        Text('Join $appName', style: AppTextStyles.displayMedium,
+        Text('Start your practice on $appName', style: AppTextStyles.displayMedium,
              textAlign: TextAlign.center),
         const SizedBox(height: AppSpacing.xs),
-        const Text('Create your free account to get started',
+        const Text('Create your free Owner account to set up your business',
             style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
       ],
-    );
-  }
-}
-
-class _RoleSelector extends StatelessWidget {
-  const _RoleSelector({required this.selectedRole, required this.onChanged});
-  final String selectedRole;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(value: 'client',  label: Text('Join as Client'),  icon: Icon(Icons.person_outline)),
-          ButtonSegment(value: 'partner', label: Text('Join as Partner'), icon: Icon(Icons.handshake_outlined)),
-        ],
-        selected: {selectedRole},
-        onSelectionChanged: (val) => onChanged(val.first),
-      ),
     );
   }
 }
@@ -184,7 +170,7 @@ class _SignUpForm extends StatelessWidget {
       child: Column(
         children: [
           AppTextField(
-            hint: 'Your name or business name', label: 'Display Name',
+            hint: 'Your business name', label: 'Display Name',
             controller: nameController,
             validator: AppValidators.required(fieldName: 'Display Name'),
             textInputAction: TextInputAction.next,
@@ -230,6 +216,40 @@ class _SignUpForm extends StatelessWidget {
           TextButton(
             onPressed: onBackToLogin,
             child: const Text('Already have an account? Sign in'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JoinExistingBusinessNote extends StatelessWidget {
+  const _JoinExistingBusinessNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: AppSpacing.iconSize,
+               color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Joining as a Partner or Client? You\'ll need an invite link '
+              'from your coach or business — ask them to send you one '
+              'instead of creating an account here.',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ],
       ),
