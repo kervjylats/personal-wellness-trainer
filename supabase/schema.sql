@@ -70,14 +70,38 @@ create policy "Allow users to update their own profiles"
     with check (auth.uid() = user_id);
 
 -- Owners can manage their business's team members (toggle flags, soft-delete).
--- Same-business scoping prevents cross-business writes. Column-level grants
--- below ensure owners can't rewrite user_id but can write feature flags.
+-- Same-business scoping prevents cross-business writes. WITH CHECK mirrors
+-- the USING scope (an owner can't move a member — or themselves — into a
+-- different business via this policy). Column-level grants below ensure
+-- owners can only write the management columns, never role/business_id/
+-- plan_tier — without them, an Owner could promote Staff to owner or move
+-- members between businesses.
 create policy "Allow owner to manage their business's members"
     on public.profiles for update
     using (auth.uid() in (
         select user_id from public.profiles
         where role = 'owner' and business_id = profiles.business_id
+    ))
+    with check (auth.uid() in (
+        select user_id from public.profiles
+        where role = 'owner' and business_id = profiles.business_id
     ));
+
+-- Column privileges are the enforcement that RLS alone cannot do: RLS
+-- policies are row-level, so without this, EITHER update policy above
+-- would allow rewriting role/business_id/plan_tier/user_id. The grant
+-- list below is the complete inventory of columns the app actually
+-- writes via direct table updates (verified against every .update() call
+-- on profiles in lib/): onboarding fields (self) + management flags
+-- (owner). Everything else — role, business_id, plan_tier, user_id,
+-- joined_at, email, financials — is unwritable via the API and must go
+-- through a future SECURITY DEFINER function (e.g. invite-accept step 2).
+revoke update on public.profiles from authenticated, anon;
+grant update (
+    business_name, selected_category, primary_color, job_id,
+    feature_toggles, is_active,
+    partners_enabled, marketplace_enabled, agreements_enabled
+) on public.profiles to authenticated;
 
 -- ── 2. AGREEMENTS TABLE ──────────────────────────────────────────────────────
 create table public.agreements (
