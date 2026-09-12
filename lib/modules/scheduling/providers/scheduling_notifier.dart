@@ -3,13 +3,13 @@
 // AsyncNotifier managing schedule slots.
 // Owner: sees all slots. Staff: sees only their own slots.
 // Client: sees only available slots (read-only for booking selection).
-// In Phase 10, replace MockSchedulingSource() with SupabaseSchedulingSource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/schedule_slot_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/scheduling_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_scheduling_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_scheduling_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -133,8 +133,7 @@ class SchedulingNotifier extends AsyncNotifier<List<ScheduleSlotModel>> {
 
   SchedulingRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockSchedulingSource();
-    throw UnimplementedError(
-        'SupabaseSchedulingSource not yet wired (Phase 10 only).');
+    return SupabaseSchedulingSource();
   }
 }
 

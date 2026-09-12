@@ -10,15 +10,18 @@
 // exact category their own coach has an active agreement for — never a
 // general cross-tenant browse.
 //
-// In Phase 10, getActiveCatalogItems(partnerBusinessId) becomes a real
-// Supabase call — this needs its own RLS policy allowing a read (never a
-// write) of another tenant's catalog, scoped the same way.
+// getActiveCatalogItems(partnerBusinessId) is a real cross-tenant
+// Supabase call now — its RLS policy (schema.sql's catalog_items table)
+// allows a read (never a write) of another tenant's active items,
+// scoped to exactly this "active agreement" case.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/data/models/catalog_item_model.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_catalog_source.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_marketplace_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_catalog_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_marketplace_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -57,12 +60,10 @@ final partnerOffersProvider = FutureProvider.autoDispose<List<PartnerOffer>>(
 
     final catalogRepo = DataConfig.useMockData
         ? MockCatalogSource()
-        : throw UnimplementedError(
-            'SupabaseCatalogSource not yet wired (Phase 10 only).');
+        : SupabaseCatalogSource();
     final marketplaceRepo = DataConfig.useMockData
         ? MockMarketplaceSource()
-        : throw UnimplementedError(
-            'SupabaseMarketplaceSource not yet wired (Phase 10 only).');
+        : SupabaseMarketplaceSource();
 
     final offers = <PartnerOffer>[];
     for (final agreement in active) {

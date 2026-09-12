@@ -1,14 +1,16 @@
 // lib/modules/delivery_fees/providers/delivery_fees_notifier.dart
 //
 // AsyncNotifier managing delivery fee zones for the current business.
-// Owner: sees and manages all zones. Staff/client: sees active zones only.
-// In Phase 10, replace MockDeliveryFeesSource() with SupabaseDeliveryFeesSource().
+// Owner: sees and manages all zones. Staff: sees active zones only.
+// (Reachable only via ownerRoutes()/staffRoutes() — no client-facing
+// route or consumer currently reads this repository.)
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/delivery_fee_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/delivery_fees_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_delivery_fees_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_delivery_fees_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -151,8 +153,7 @@ class DeliveryFeesNotifier extends AsyncNotifier<List<DeliveryFeeModel>> {
 
   DeliveryFeesRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockDeliveryFeesSource();
-    throw UnimplementedError(
-        'SupabaseDeliveryFeesSource not yet wired (Phase 10 only).');
+    return SupabaseDeliveryFeesSource();
   }
 }
 

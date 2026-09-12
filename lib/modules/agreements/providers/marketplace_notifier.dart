@@ -16,6 +16,7 @@ import 'package:personal_wellness_trainer/data/models/marketplace_listing.dart';
 import 'package:personal_wellness_trainer/data/models/partnership_request.dart';
 import 'package:personal_wellness_trainer/data/repositories/marketplace_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_marketplace_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_marketplace_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -24,7 +25,7 @@ final marketplaceActionErrorProvider = StateProvider<String?>((ref) => null);
 
 final _marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
   if (DataConfig.useMockData) return MockMarketplaceSource();
-  throw UnimplementedError('Supabase marketplace source — Phase 10 only.');
+  return SupabaseMarketplaceSource();
 });
 
 class MarketplaceState {

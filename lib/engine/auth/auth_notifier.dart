@@ -8,6 +8,8 @@ import 'package:personal_wellness_trainer/data/sources/mock/mock_auth_source.dar
 import 'package:personal_wellness_trainer/data/sources/mock/mock_profiles.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dart';
 import 'package:personal_wellness_trainer/data/sources/supabase/supabase_auth_source.dart'; 
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_team_source.dart';
+import 'package:personal_wellness_trainer/data/repositories/team_repository.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_repository.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -24,10 +26,12 @@ class AuthNotifier extends Notifier<AuthState> {
   static const String _tag = 'AuthNotifier';
 
   late final AuthRepository _repository;
+  late final TeamRepository _teamRepository;
 
   @override
   AuthState build() {
     _repository = _resolveRepository();
+    _teamRepository = _resolveTeamRepository();
     
     // ── DEVELOPER SANDBOX BYPASS ──
     if (BuyerConfig.testBypassRole != null) {
@@ -75,6 +79,13 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
     required String displayName,
     required String role, 
+    // Only used by accept_invitation_screen.dart's real-mode invite-accept
+    // path — see AuthRepository.signUp's doc comment. The Owner
+    // self-signup screen never passes these, so behavior there is
+    // unchanged (fresh businessId, no category/partner).
+    String? businessId,
+    String? categoryId,
+    String? primaryPartnerId,
   }) async {
     if (state is AuthLoading) return;
     state = const AuthLoading();
@@ -85,10 +96,17 @@ class AuthNotifier extends Notifier<AuthState> {
         email: email.trim(),
         password: password,
         displayName: displayName.trim(),
+        businessId: businessId,
+        role: role,
+        categoryId: categoryId,
+        primaryPartnerId: primaryPartnerId,
       );
       
       final updatedProfile = profile.copyWith(role: role);
-      if (role == AppConstants.roleOwner) {
+      // ensureOwnerRow is mock-only: it substitutes for what Supabase's
+      // on_auth_user_created trigger already does automatically for real
+      // sign-ups (see triggers.sql) — no real-mode equivalent needed.
+      if (role == AppConstants.roleOwner && DataConfig.useMockData) {
         MockTeamSource().ensureOwnerRow(
           userId: updatedProfile.userId,
           businessId: updatedProfile.businessId,
@@ -122,8 +140,10 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       // Keep the roster row (created at signUp time) in sync now that
-      // categoryId/displayName are finally known.
-      if (updatedProfile.role == AppConstants.roleOwner) {
+      // categoryId/displayName are finally known. Mock-only: in real
+      // mode, the setOnboardingComplete() call right below already
+      // updates this same data on the one real profiles row.
+      if (updatedProfile.role == AppConstants.roleOwner && DataConfig.useMockData) {
         MockTeamSource().ensureOwnerRow(
           userId: updatedProfile.userId,
           businessId: updatedProfile.businessId,
@@ -200,7 +220,7 @@ class AuthNotifier extends Notifier<AuthState> {
         jobId: 'yoga_studio', 
       );
 
-      MockTeamSource().migratePartnerClients(current.profile.userId, newBusinessId);
+      await _teamRepository.migratePartnerClients(current.profile.userId, newBusinessId);
       AppLogger.info('SaaS Spin-Off: Migrated clients to business $newBusinessId', tag: _tag);
     } else {
       updated = current.profile.copyWith(
@@ -237,7 +257,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
     state = AuthAuthenticated(profile: updated, isNewOwner: current.isNewOwner);
 
-    MockTeamSource().updateBusinessFeatures(
+    await _teamRepository.updateBusinessFeatures(
       current.profile.userId,
       partnersEnabled: partnersEnabled,
       marketplaceEnabled: marketplaceEnabled,
@@ -376,6 +396,11 @@ class AuthNotifier extends Notifier<AuthState> {
     return SupabaseAuthSource(); 
   }
 
+  TeamRepository _resolveTeamRepository() {
+    if (DataConfig.useMockData) return MockTeamSource();
+    return SupabaseTeamSource();
+  }
+
   Future<void> _tryRestoreSession() async {
     try {
       final profile = await _repository.restoreSession();
@@ -437,6 +462,7 @@ class QaFreshAuthNotifier extends AuthNotifier {
   @override
   AuthState build() {
     _repository = _resolveRepository();
+    _teamRepository = _resolveTeamRepository();
     return const AuthUnauthenticated();
   }
 }

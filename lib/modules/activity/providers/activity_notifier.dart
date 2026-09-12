@@ -14,6 +14,7 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/activity_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/activity_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_activity_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_activity_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -202,9 +203,7 @@ class ActivityNotifier extends AsyncNotifier<List<ActivityModel>> {
 
   ActivityRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockActivitySource();
-    throw UnimplementedError(
-      'Real activity source not available until Phase 10.',
-    );
+    return SupabaseActivitySource();
   }
 }
 

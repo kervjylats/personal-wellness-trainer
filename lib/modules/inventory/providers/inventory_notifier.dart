@@ -2,13 +2,13 @@
 //
 // AsyncNotifier managing inventory stock levels for the current business.
 // Owner-only module — staff and clients do not see inventory management.
-// In Phase 10, replace MockInventorySource() with SupabaseInventorySource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/inventory_item_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/inventory_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_inventory_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_inventory_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -121,8 +121,7 @@ class InventoryNotifier extends AsyncNotifier<List<InventoryItemModel>> {
 
   InventoryRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockInventorySource();
-    throw UnimplementedError(
-        'SupabaseInventorySource not yet wired (Phase 10 only).');
+    return SupabaseInventorySource();
   }
 }
 

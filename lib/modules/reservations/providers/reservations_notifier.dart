@@ -2,13 +2,13 @@
 //
 // AsyncNotifier managing the slot-based entries for the current business.
 // Owner: sees all entries. Staff: sees assigned only. Client: sees their own.
-// In Phase 10, replace MockReservationsSource() with SupabaseReservationsSource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/reservation_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/reservations_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_reservations_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_reservations_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -141,8 +141,7 @@ class ReservationsNotifier extends AsyncNotifier<List<ReservationModel>> {
 
   ReservationsRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockReservationsSource();
-    throw UnimplementedError(
-        'SupabaseReservationsSource not yet wired (Phase 10 only).');
+    return SupabaseReservationsSource();
   }
 }
 

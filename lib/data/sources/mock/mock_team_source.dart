@@ -11,7 +11,8 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
   static int _idCounter = 50;
 
   // ── SaaS Spin-Off Client Migration Script ──
-  void migratePartnerClients(String partnerId, String newBusinessId) {
+  @override
+  Future<void> migratePartnerClients(String partnerId, String newBusinessId) async {
     for (int i = 0; i < _store.length; i++) {
       final member = _store[i];
       if (member.role == 'client' && member.primaryPartnerId == partnerId) {
@@ -25,12 +26,13 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
   /// (`getMembers`) is the shared read path everyone's Network screen and
   /// nav gating already go through. AuthNotifier.updateBusinessFeatures
   /// calls this alongside updating its own local AuthState.
-  void updateBusinessFeatures(
+  @override
+  Future<void> updateBusinessFeatures(
     String ownerUserId, {
     bool? partnersEnabled,
     bool? marketplaceEnabled,
     bool? agreementsEnabled,
-  }) {
+  }) async {
     final i = _store.indexWhere((m) => m.userId == ownerUserId);
     if (i == -1) return;
     _store[i] = _store[i].copyWith(

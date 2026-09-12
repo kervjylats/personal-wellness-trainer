@@ -78,15 +78,45 @@
 
 ## 4. Flagged, Not Fixed
 
+> **Re-verification note (after full commit):** the first version of this
+> report was pushed alongside only 9 files while the other 18 sources and
+> 32 notifier/wiring files were on disk but uncommitted. All 51 files are
+> now committed together. I re-checked each flagged item against the full
+> picture — including whether previously-uncommitted files change the
+> analysis. Verdicts below are confirmed accurate, with two refinements:
+> (a) `supabase_team_source.dart`'s header (previously uncommitted)
+> prescribes the fix direction for item 1 — force defaults in the
+> trigger, reassign role/business in the future invite-accept step 2;
+> (b) item 4 is downgraded — no send/create method exists in the
+> notification source at all, so no current call site is broken; it is
+> future work for when a send flow is built.
+
 1. **`handle_new_user` metadata trust** (Critical 2 above): Needs decision on role/business_id validation strategy.
 
 2. **`profiles` INSERT for license activation** (Critical 4 above): Needs `activate_profile()` RPC designed with key validation logic.
 
-3. **`transactions`/`commissions` cross-business writes**: Insert policies require caller in row's `business_id`, but cross-business purchases (buyer in seller's business) contradict this. Need to read `transaction_notifier.dart` to confirm which `business_id` is written, then likely build a `purchase_from_partner()` RPC.
+3. **`transactions`/`commissions` cross-business writes** (confirmed, precisely
+   scoped): `transaction_notifier.dart:137-138` (`purchaseFromPartner`) books
+   the purchase under `agreement.partnerBusinessId` — a business the caller
+   is not a member of — so the transactions INSERT policy (caller must be in
+   the row's business) rejects it in real mode. The notifier's own comment
+   admits this only works in mock mode's shared store. Needs a
+   `purchase_from_partner()` RPC. The commission leg (booked under the
+   client's own coach business) is fine as a direct insert.
 
-4. **`notifications` cross-business**: Insert policy requires membership in notification's business, but partnership flows need to notify the receiver's business. Needs a narrow `notify_user()` RPC with relationship verification.
+4. **`notifications` cross-business** (downgraded to future work):
+   `supabase_notification_source.dart` has no send/create method at all —
+   only get/markRead/delete, all self-scoped. No current call site is
+   broken. When a send flow is built (e.g. partnership events notifying the
+   receiver's business), it will need a narrow `notify_user()` RPC with
+   relationship verification, since the INSERT policy requires membership
+   in the notification's business.
 
-5. **`loyalty_points` coach visibility**: SELECT is self-only (`auth.uid() = user_id`). If coaches legitimately view client balances, add owner/staff-of-business clause. Product decision needed.
+5. **`loyalty_points` coach visibility** (confirmed, no broken call site):
+   SELECT is self-only. The only `getPoints` caller
+   (`loyalty_notifier.dart:37`) passes the caller's own IDs, so nothing is
+   broken today. If coaches legitimately view client balances, add an
+   owner/staff-of-business clause. Product decision needed.
 
 6. **`supabase_team_source.inviteMember` always throws**: Correctly implements the signature but body is `throw UnimplementedError`. Intentional (needs `inviteeUserId` + real Auth signup), but don't route real-mode calls to it until the interface is extended.
 

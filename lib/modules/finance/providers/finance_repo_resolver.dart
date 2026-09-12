@@ -4,19 +4,16 @@
 // Previously _resolveRepository() was copy-pasted verbatim in both
 // CommissionNotifier and TransactionNotifier (100% identical). Now one place.
 //
-// In Phase 10: replace MockFinanceSource() with SupabaseFinanceSource() here
-// and both notifiers automatically get the real backend.
+// Real Supabase backend wired in below — flip DataConfig.useMockData to
+// switch, both notifiers (and anything else using this resolver) follow.
 
 import 'package:personal_wellness_trainer/data/repositories/finance_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_finance_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_finance_source.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 
 /// Returns the appropriate [FinanceRepository] for the current data config.
-/// Phase 10: swap MockFinanceSource() → SupabaseFinanceSource() here only.
 FinanceRepository resolveFinanceRepository() {
   if (DataConfig.useMockData) return MockFinanceSource();
-  throw UnimplementedError(
-    'Real finance source not available until Phase 10. '
-    'Set DataConfig.useMockData = true for development.',
-  );
+  return SupabaseFinanceSource();
 }

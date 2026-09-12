@@ -13,6 +13,7 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/notification_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/notification_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_notification_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_notification_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -22,7 +23,7 @@ import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 final _notificationRepositoryProvider =
     Provider<NotificationRepository>((ref) {
   if (DataConfig.useMockData) return MockNotificationSource();
-  throw UnimplementedError('SupabaseNotificationSource — Phase 10');
+  return SupabaseNotificationSource();
 });
 
 // ── Notifications list provider ───────────────────────────────────────────────

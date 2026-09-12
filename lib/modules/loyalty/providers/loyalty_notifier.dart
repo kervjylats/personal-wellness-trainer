@@ -7,13 +7,14 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/loyalty_models.dart';
 import 'package:personal_wellness_trainer/data/repositories/loyalty_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_loyalty_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_loyalty_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 
 final loyaltyRepositoryProvider = Provider<LoyaltyRepository>((ref) {
   if (DataConfig.useMockData) return MockLoyaltySource();
-  throw UnimplementedError('Supabase loyalty source — Phase 10');
+  return SupabaseLoyaltySource();
 });
 
 final loyaltyNotifierProvider =

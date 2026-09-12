@@ -3,13 +3,14 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/progress_entry_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/progress_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_progress_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_progress_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 
 final _progressRepositoryProvider = Provider<ProgressRepository>((ref) {
   if (DataConfig.useMockData) return MockProgressSource();
-  throw UnimplementedError('Supabase progress source — Phase 10');
+  return SupabaseProgressSource();
 });
 
 final progressNotifierProvider =

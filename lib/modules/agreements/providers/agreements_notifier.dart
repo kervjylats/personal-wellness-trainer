@@ -17,6 +17,7 @@ import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/data/models/partnership_request.dart';
 import 'package:personal_wellness_trainer/data/repositories/agreements_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_agreements_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_agreements_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -27,7 +28,7 @@ import 'package:personal_wellness_trainer/engine/providers/module_error_bus.dart
 
 final _agreementsRepositoryProvider = Provider<AgreementsRepository>((ref) {
   if (DataConfig.useMockData) return MockAgreementsSource();
-  throw UnimplementedError('Supabase agreements source — Phase 10 only.');
+  return SupabaseAgreementsSource();
 });
 
 // ── Notifier provider ─────────────────────────────────────────────────────────

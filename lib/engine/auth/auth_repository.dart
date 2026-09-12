@@ -9,6 +9,17 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String displayName,
+    // All optional, and all unused by the existing Owner self-signup
+    // screen (which needs none of them — a brand-new business gets a
+    // fresh businessId and no partner/category). These exist specifically
+    // for accept_invitation_screen.dart's real-mode path: an invited
+    // Partner/Staff/Client needs to land in the INVITING business, not a
+    // new one of their own, and a Client needs their ownership chain
+    // (see mock_team_source.dart's _resolveClientOwnerId) resolved too.
+    String? businessId,
+    String? role,
+    String? categoryId,
+    String? primaryPartnerId,
   });
 
   Future<void> signOut();

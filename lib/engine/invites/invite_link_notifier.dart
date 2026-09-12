@@ -5,6 +5,7 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/invite_link_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/invite_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_invite_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_invite_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -37,7 +38,7 @@ class InviteLinkNotifier extends AutoDisposeAsyncNotifier<List<InviteLinkModel>>
   static const String _tag = 'InviteLinkNotifier';
 
   InviteRepository get _repo =>
-      DataConfig.useMockData ? MockInviteSource() : throw UnimplementedError();
+      DataConfig.useMockData ? MockInviteSource() : SupabaseInviteSource();
 
   @override
   Future<List<InviteLinkModel>> build() async {

@@ -2,13 +2,13 @@
 //
 // AsyncNotifier managing the media library for the current business.
 // Owner: sees all items. Client: sees public items only.
-// In Phase 10, replace MockMediaSource() with SupabaseMediaSource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/media_item_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/media_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_media_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_media_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -146,8 +146,7 @@ class MediaNotifier extends AsyncNotifier<List<MediaItemModel>> {
 
   MediaRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockMediaSource();
-    throw UnimplementedError(
-        'SupabaseMediaSource not yet wired (Phase 10 only).');
+    return SupabaseMediaSource();
   }
 }
 

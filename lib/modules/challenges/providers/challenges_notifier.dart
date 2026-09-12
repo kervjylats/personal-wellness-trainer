@@ -7,13 +7,14 @@ import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/challenge_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/challenges_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_challenges_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_challenges_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 
 final challengesRepositoryProvider = Provider<ChallengesRepository>((ref) {
   if (DataConfig.useMockData) return MockChallengesSource();
-  throw UnimplementedError('Supabase challenges source — Phase 10');
+  return SupabaseChallengesSource();
 });
 
 final challengesNotifierProvider =

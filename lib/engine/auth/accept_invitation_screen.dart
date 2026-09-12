@@ -15,7 +15,9 @@ import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
 import 'package:personal_wellness_trainer/data/models/user_profile.dart';
 import 'package:personal_wellness_trainer/data/repositories/team_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_team_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
@@ -25,7 +27,7 @@ import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.da
 // layer directly, without importing the team module.
 final _teamRepoForInvitesProvider = Provider<TeamRepository>((ref) {
   if (DataConfig.useMockData) return MockTeamSource();
-  throw UnimplementedError('Supabase team source — Phase 10 only.');
+  return SupabaseTeamSource();
 });
 
 class AcceptInvitationScreen extends ConsumerStatefulWidget {
@@ -41,6 +43,7 @@ class _AcceptInvitationScreenState
   final _formKey = GlobalKey<FormState>();
   final _tokenController = TextEditingController();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSaving = false;
@@ -52,8 +55,31 @@ class _AcceptInvitationScreenState
   void dispose() {
     _tokenController.dispose();
     _nameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Client-invited-by-client referral chains resolve to the SAME root
+  /// owner/partner as the inviting client, not the inviting client
+  /// themselves — mirrors mock_team_source.dart's _resolveClientOwnerId
+  /// exactly in effect, just expressed as a DB lookup instead of an
+  /// in-memory scan (real mode has no equivalent single in-memory store
+  /// to search). Owner/Partner/Staff invites never need this — they ARE
+  /// the root, so link.invitedByUserId is already correct as-is.
+  Future<String> _resolveRealOwnerId(TokenValid tokenResult) async {
+    final link = tokenResult.link;
+    if (link.targetRole != 'client' || link.invitedByRole != 'client') {
+      return link.invitedByUserId;
+    }
+    final members =
+        await ref.read(_teamRepoForInvitesProvider).getMembers(link.businessId);
+    for (final m in members) {
+      if (m.userId == link.invitedByUserId) {
+        return m.primaryPartnerId ?? link.invitedByUserId;
+      }
+    }
+    return link.invitedByUserId;
   }
 
   Future<void> _accept() async {
@@ -79,37 +105,64 @@ class _AcceptInvitationScreenState
 
       case TokenValid(:final link):
         try {
-          // Creates the real team-member record — the SAME data source
-          // the Owner's Network/Team screen reads from, so the new
-          // member shows up there immediately, in any panel watching it.
-          final member = await ref.read(_teamRepoForInvitesProvider).inviteMember(
-                businessId: link.businessId,
-                invitedByUserId: link.invitedByUserId,
-                role: link.targetRole,
-                displayName: _nameController.text.trim(),
-                categoryId: link.categoryId,
-              );
+          if (DataConfig.useMockData) {
+            // Creates the real team-member record — the SAME data source
+            // the Owner's Network/Team screen reads from, so the new
+            // member shows up there immediately, in any panel watching it.
+            final member = await ref.read(_teamRepoForInvitesProvider).inviteMember(
+                  businessId: link.businessId,
+                  invitedByUserId: link.invitedByUserId,
+                  role: link.targetRole,
+                  displayName: _nameController.text.trim(),
+                  email: _emailController.text.trim(),
+                  categoryId: link.categoryId,
+                );
 
-          final profile = UserProfile(
-            userId: member.userId,
-            businessId: member.businessId,
-            role: member.role,
-            displayName: member.displayName,
-            joinedAt: member.joinedAt,
-            isActive: member.isActive,
-            email: member.email,
-            categoryId: member.categoryId,
-            primaryPartnerId: member.primaryPartnerId,
-            featureToggles: member.featureToggles,
-          );
+            final profile = UserProfile(
+              userId: member.userId,
+              businessId: member.businessId,
+              role: member.role,
+              displayName: member.displayName,
+              joinedAt: member.joinedAt,
+              isActive: member.isActive,
+              email: member.email,
+              categoryId: member.categoryId,
+              primaryPartnerId: member.primaryPartnerId,
+              featureToggles: member.featureToggles,
+            );
+
+            await ref.read(authNotifierProvider.notifier).completeInviteJoin(profile);
+          } else {
+            // Real mode: creates an actual Supabase Auth account. The
+            // on_auth_user_created trigger (triggers.sql) reads
+            // role/business_id/category_id/primary_partner_id straight
+            // off the signup metadata and creates the profiles row
+            // already correctly scoped to the INVITING business — not a
+            // fresh one of the invitee's own, which is what would happen
+            // if this called the Owner self-signup path instead.
+            final resolvedOwnerId = await _resolveRealOwnerId(result);
+
+            await ref.read(authNotifierProvider.notifier).signUp(
+                  email: _emailController.text.trim(),
+                  password: _passwordController.text,
+                  displayName: _nameController.text.trim(),
+                  role: link.targetRole,
+                  businessId: link.businessId,
+                  categoryId: link.categoryId,
+                  primaryPartnerId:
+                      link.targetRole == 'client' ? resolvedOwnerId : null,
+                );
+
+            final authState = ref.read(authNotifierProvider);
+            if (authState is AuthUnauthenticated) {
+              throw Exception(authState.errorMessage ?? 'Sign-up failed.');
+            }
+          }
 
           // Marks the invite link as used (so a single-use link can't be
-          // redeemed twice) — and only AFTER the team member was
-          // successfully created, so a failure above doesn't burn the
-          // invite for nothing.
+          // redeemed twice) — and only AFTER the account was successfully
+          // created, so a failure above doesn't burn the invite for nothing.
           await ref.read(inviteLinkNotifierProvider.notifier).recordUse(link.id);
-
-          await ref.read(authNotifierProvider.notifier).completeInviteJoin(profile);
 
           if (!mounted) return;
           setState(() {
@@ -151,6 +204,7 @@ class _AcceptInvitationScreenState
                       formKey: _formKey,
                       tokenController: _tokenController,
                       nameController: _nameController,
+                      emailController: _emailController,
                       passwordController: _passwordController,
                       obscurePassword: _obscurePassword,
                       isSaving: _isSaving,
@@ -173,6 +227,7 @@ class _InviteFormView extends StatelessWidget {
     required this.formKey,
     required this.tokenController,
     required this.nameController,
+    required this.emailController,
     required this.passwordController,
     required this.obscurePassword,
     required this.isSaving,
@@ -185,6 +240,7 @@ class _InviteFormView extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController tokenController;
   final TextEditingController nameController;
+  final TextEditingController emailController;
   final TextEditingController passwordController;
   final bool obscurePassword;
   final bool isSaving;
@@ -250,6 +306,17 @@ class _InviteFormView extends StatelessWidget {
             validator: AppValidators.required(fieldName: 'Your Name'),
             textInputAction: TextInputAction.next,
             prefixIcon: Icons.person_outline,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            hint: 'you@example.com',
+            label: 'Email',
+            controller: emailController,
+            validator: AppValidators.email,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            prefixIcon: Icons.email_outlined,
+            autofillHints: const [AutofillHints.email],
           ),
           const SizedBox(height: AppSpacing.md),
           AppTextField(

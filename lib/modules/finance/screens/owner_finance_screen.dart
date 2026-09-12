@@ -13,6 +13,7 @@ import 'package:personal_wellness_trainer/data/models/transaction_model.dart';
 import 'package:personal_wellness_trainer/data/models/revenue_summary_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/agreements_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_agreements_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_agreements_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -26,7 +27,7 @@ import 'package:personal_wellness_trainer/modules/finance/widgets/finance_widget
 
 final _financeAgreementsRepoProvider = Provider<AgreementsRepository>((ref) {
   if (DataConfig.useMockData) return MockAgreementsSource();
-  throw UnimplementedError('Supabase agreements source — Phase 10 only.');
+  return SupabaseAgreementsSource();
 });
 
 final _financeDealsProvider =

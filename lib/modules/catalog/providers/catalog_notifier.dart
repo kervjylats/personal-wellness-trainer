@@ -3,13 +3,13 @@
 // AsyncNotifier managing the catalog for the current business.
 // Owner: sees all items (active and inactive).
 // Client: sees only active items.
-// In Phase 10, replace MockCatalogSource() with SupabaseCatalogSource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/catalog_item_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/catalog_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_catalog_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_catalog_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -152,8 +152,7 @@ class CatalogNotifier extends AsyncNotifier<List<CatalogItemModel>> {
 
   CatalogRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockCatalogSource();
-    throw UnimplementedError(
-        'SupabaseCatalogSource not yet wired (Phase 10 only).');
+    return SupabaseCatalogSource();
   }
 }
 

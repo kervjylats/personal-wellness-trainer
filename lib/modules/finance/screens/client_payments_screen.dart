@@ -16,11 +16,10 @@ import 'package:personal_wellness_trainer/core/widgets/error_display.dart';
 import 'package:personal_wellness_trainer/core/widgets/loading_indicator.dart';
 import 'package:personal_wellness_trainer/data/models/transaction_model.dart';
 import 'package:personal_wellness_trainer/data/models/user_profile.dart';
-import 'package:personal_wellness_trainer/data/sources/mock/mock_finance_source.dart';
+import 'package:personal_wellness_trainer/modules/finance/providers/finance_repo_resolver.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
-import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/modules/finance/widgets/finance_widgets.dart';
 
 class ClientPaymentsScreen extends ConsumerWidget {
@@ -36,10 +35,8 @@ class ClientPaymentsScreen extends ConsumerWidget {
     final currency     = config?.industry.payment.currencyDefault ?? r'$';
     final financeLabel = config?.industry.terminology.finance ?? 'Finance';
 
-    final future = DataConfig.useMockData
-        ? MockFinanceSource()
-            .getTransactionsForUser(profile.businessId, profile.userId)
-        : throw UnimplementedError('Phase 10');
+    final future = resolveFinanceRepository()
+        .getTransactionsForUser(profile.businessId, profile.userId);
 
     return Scaffold(
       appBar: AppBar(

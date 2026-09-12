@@ -72,6 +72,13 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     required String email,
     required String password,
     required String displayName,
+    // Unused here — mock mode's invite-accept flow goes through
+    // TeamRepository.inviteMember() directly instead, never this method.
+    // Present only to satisfy AuthRepository's shared interface.
+    String? businessId,
+    String? role,
+    String? categoryId,
+    String? primaryPartnerId,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
     if (trimmedEmail.isEmpty) throw Exception('Email address is required');

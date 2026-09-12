@@ -28,4 +28,21 @@ abstract class TeamRepository {
     required String memberId,
     required String businessId,
   });
+
+  /// Moves a Partner's own invited clients (and any pending transactions
+  /// tied to them) over to the Partner's new independent businessId once
+  /// they upgrade to Pro. In Supabase mode this wraps the existing
+  /// `migrate_partner_clients` Postgres function (see triggers.sql) rather
+  /// than re-implementing the logic in Dart.
+  Future<void> migratePartnerClients(String partnerId, String newBusinessId);
+
+  /// Owner-only. Persists the business-wide Partnerships/Marketplace/
+  /// Agreements toggles (see business_features_provider.dart). Pass only
+  /// the flags that changed — omitted ones are left untouched.
+  Future<void> updateBusinessFeatures(
+    String ownerUserId, {
+    bool? partnersEnabled,
+    bool? marketplaceEnabled,
+    bool? agreementsEnabled,
+  });
 }

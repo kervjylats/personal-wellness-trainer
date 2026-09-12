@@ -3,13 +3,13 @@
 // AsyncNotifier managing GPS location points for the current business.
 // Owner: sees latest point for each tracked user.
 // Staff: sees only their own history.
-// In Phase 10, replace MockGpsSource() with SupabaseGpsSource().
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/gps_point_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/gps_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_gps_source.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_gps_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -121,8 +121,7 @@ class GpsNotifier extends AsyncNotifier<List<GpsPointModel>> {
 
   GpsRepository _resolveRepository() {
     if (DataConfig.useMockData) return MockGpsSource();
-    throw UnimplementedError(
-        'SupabaseGpsSource not yet wired (Phase 10 only).');
+    return SupabaseGpsSource();
   }
 }
 
