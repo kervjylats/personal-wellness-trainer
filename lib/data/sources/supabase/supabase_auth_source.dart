@@ -40,13 +40,20 @@ class SupabaseAuthSource implements AuthRepository {
     required String email,
     required String password,
     required String displayName,
+    String? businessId,
+    String? role,
+    String? categoryId,
+    String? primaryPartnerId,
   }) async {
     final response = await _auth.signUp(
       email: email,
       password: password,
       data: {
         'display_name': displayName,
-        'role': 'owner', 
+        'role': role ?? 'owner',
+        if (businessId != null) 'business_id': businessId,
+        if (categoryId != null) 'category_id': categoryId,
+        if (primaryPartnerId != null) 'primary_partner_id': primaryPartnerId,
       },
     );
 
@@ -144,7 +151,14 @@ class SupabaseAuthSource implements AuthRepository {
     };
 
     await _db.from('profiles').insert(newProfile);
-    return UserProfile.fromJson(newProfile);
+    // Re-fetch the row so server defaults (joined_at, etc.) are present —
+    // the local map doesn't have them and UserProfile.fromJson requires them.
+    final row = await _db
+        .from('profiles')
+        .select()
+        .eq('user_id', userId)
+        .single();
+    return UserProfile.fromJson(row);
   }
 
   Future<UserProfile> _fetchProfile(String userId) async {

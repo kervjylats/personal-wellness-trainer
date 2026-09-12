@@ -83,6 +83,8 @@ class ConversationModel {
     'participant_names':      participantNames,
     'created_at':             createdAt.toIso8601String(),
     'updated_at':             updatedAt.toIso8601String(),
+    // NOTE: `unread_count` is client-only (computed live, no DB column).
+    // Never pass toJson() output directly to .insert()/.upsert().
     'unread_count':           unreadCount,
     if (groupName != null)            'group_name':               groupName,
     if (lastMessageContent != null)   'last_message_content':     lastMessageContent,

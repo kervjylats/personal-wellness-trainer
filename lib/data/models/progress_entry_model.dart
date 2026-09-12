@@ -22,7 +22,9 @@ class ProgressEntryModel {
       id: json['id'] as String,
       businessId: json['business_id'] as String,
       clientUserId: json['client_user_id'] as String,
-      date: DateTime.parse(json['date'] as String),
+      // DB column is `created_at`; accept legacy `date` key for compatibility.
+      date: DateTime.parse(
+          ((json['date'] ?? json['created_at']) as String)),
       photoUrls: (json['photo_urls'] as List<dynamic>?)?.cast<String>() ?? [],
       metrics: (json['metrics'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, (v as num).toDouble()),
@@ -36,7 +38,8 @@ class ProgressEntryModel {
         'id': id,
         'business_id': businessId,
         'client_user_id': clientUserId,
-        'date': date.toIso8601String(),
+        // DB column is `created_at`, not `date`.
+        'created_at': date.toIso8601String(),
         'photo_urls': photoUrls,
         'metrics': metrics,
         if (notes != null) 'notes': notes,

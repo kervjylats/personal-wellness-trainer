@@ -46,8 +46,10 @@ class PointTransaction {
     return PointTransaction(
       id: json['id'] as String,
       reason: json['reason'] as String,
-      amount: json['amount'] as int,
-      date: DateTime.parse(json['date'] as String),
+      amount: (json['amount'] as num).toInt(),
+      // DB column is `created_at`; accept legacy `date` key for compatibility.
+      date: DateTime.parse(
+          ((json['date'] ?? json['created_at']) as String)),
     );
   }
 
