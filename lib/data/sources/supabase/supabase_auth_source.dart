@@ -40,20 +40,14 @@ class SupabaseAuthSource implements AuthRepository {
     required String email,
     required String password,
     required String displayName,
-    String? businessId,
-    String? role,
-    String? categoryId,
-    String? primaryPartnerId,
+    String? redemptionCode,
   }) async {
     final response = await _auth.signUp(
       email: email,
       password: password,
       data: {
         'display_name': displayName,
-        'role': role ?? 'owner',
-        if (businessId != null) 'business_id': businessId,
-        if (categoryId != null) 'category_id': categoryId,
-        if (primaryPartnerId != null) 'primary_partner_id': primaryPartnerId,
+        if (redemptionCode != null) 'redemption_code': redemptionCode,
       },
     );
 

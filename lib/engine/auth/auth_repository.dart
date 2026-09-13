@@ -9,17 +9,17 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String displayName,
-    // All optional, and all unused by the existing Owner self-signup
-    // screen (which needs none of them — a brand-new business gets a
-    // fresh businessId and no partner/category). These exist specifically
-    // for accept_invitation_screen.dart's real-mode path: an invited
-    // Partner/Staff/Client needs to land in the INVITING business, not a
-    // new one of their own, and a Client needs their ownership chain
-    // (see mock_team_source.dart's _resolveClientOwnerId) resolved too.
-    String? businessId,
-    String? role,
-    String? categoryId,
-    String? primaryPartnerId,
+    // The ONLY thing the client can hand the server about who this
+    // person is becoming — an opaque invite token or activation key
+    // code. Everything else (role, business_id, category_id,
+    // primary_partner_id for an invite; business_name/primary_color/
+    // job_id/plan_tier for an activation key) is resolved SERVER-SIDE
+    // from the actual invite_links/activation_keys row this code points
+    // to (see handle_new_user() in triggers.sql). A client can no longer
+    // just assert its own role/business_id the way earlier versions of
+    // this method allowed. Null means a genuine fresh Owner self-signup
+    // (SignupScreen, Owner-only) — mints a brand-new free-tier business.
+    String? redemptionCode,
   });
 
   Future<void> signOut();

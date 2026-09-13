@@ -16,6 +16,7 @@ abstract final class RouteNames {
   static const String forgotPassword = 'forgot-password';
   static const String onboarding = 'onboarding';
   static const String acceptInvitation = 'accept-invitation';
+  static const String marketingLanding = 'marketing-landing';
 
   // ── Settings ──────────────────────────────────────────────────────────────────
   static const String ownerBranding = 'owner-branding';
@@ -163,6 +164,7 @@ abstract final class RouteNames {
   static const String signupPath = '/signup';
   static const String onboardingPath = '/onboarding';
   static const String acceptInvitationPath = '/accept-invitation';
+  static const String marketingLandingPath = '/get-started';
   static const String ownerPath = '/owner';
   static const String partnerPath = '/partner';
   static const String staffPath = '/staff';

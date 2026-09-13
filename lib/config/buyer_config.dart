@@ -68,6 +68,38 @@ abstract final class BuyerConfig {
     'redirect_url': 'https://codecanyon.net/your-listing', 
   };
 
+  // ── Marketing Landing Page ──
+  // This is the ONE page a QR code, a shared personal link, or a social
+  // media post should point to — it's built to work for two different
+  // kinds of visitor at once, so you only ever need to share one URL:
+  //   - Someone who doesn't have a code yet sees the pitch below and taps
+  //     Contact to reach you directly (however you set contactUrl —
+  //     mailto:, a WhatsApp link, a Calendly link, your own contact form,
+  //     whatever you prefer). Payment and handing over a key both happen
+  //     completely outside the app, on your own terms.
+  //   - Someone you've ALREADY sold a key to (in person, by DM, however)
+  //     lands on this same page and can enter it directly in the code
+  //     field shown here — no separate screen needed.
+  //   - An existing free Partner (see proUpgradeSettings above) browsing
+  //     this page can also upgrade to Pro immediately, on the spot,
+  //     without contacting you at all — controlled by showUpgradeButton
+  //     below, using the SAME button_label/subtitle/upgrade flow as
+  //     proUpgradeSettings, so you only ever edit that text once.
+  // Turn any of the three sections on/off independently — whichever mix
+  // fits how you want to sell this.
+  static const Map<String, dynamic> marketingLandingSettings = {
+    'headline': 'Run your own wellness business — powered by our platform',
+    'subtitle': 'Everything you need to manage clients, staff, and bookings, '
+        'all in one branded app.',
+    'show_activation_key_field': true,
+    'show_upgrade_button': true,
+    'show_contact_section': true,
+    'contact_button_label': 'Get in touch',
+    // mailto:, https://wa.me/<number>, a Calendly link, your own contact
+    // form URL — anything a device can open.
+    'contact_url': 'mailto:your-sales@email.com',
+  };
+
   // ── Support Screen Settings Map ──
   static const Map<String, dynamic> supportScreenSettings = {
     'show_custom_features_banner': true,

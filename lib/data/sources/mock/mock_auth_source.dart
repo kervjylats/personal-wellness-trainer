@@ -68,17 +68,24 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
   }
 
   @override
+  // A handful of fixed demo activation keys so the marketing landing
+  // page's key-redemption path has something real to try in mock mode
+  // too — mirrors real mode's activation_keys table, just in-memory.
+  // Real mode's mock-mode-equivalent invite acceptance (Partner/Staff/
+  // Client) already works via TeamRepository.inviteMember() directly, a
+  // separate path from this one — this only fills the activation-key gap.
+  static final Map<String, Map<String, String>> _demoActivationKeys = {
+    'DEMO-YOGA-001': {'jobId': 'yoga_studio', 'businessName': 'Sunrise Yoga', 'primaryColor': '#2471A3'},
+    'DEMO-NUTRITION-001': {'jobId': 'nutritionist', 'businessName': 'Fresh Start Nutrition', 'primaryColor': '#2E8B57'},
+  };
+  static final Set<String> _redeemedDemoKeys = {};
+
+  @override
   Future<UserProfile> signUp({
     required String email,
     required String password,
     required String displayName,
-    // Unused here — mock mode's invite-accept flow goes through
-    // TeamRepository.inviteMember() directly instead, never this method.
-    // Present only to satisfy AuthRepository's shared interface.
-    String? businessId,
-    String? role,
-    String? categoryId,
-    String? primaryPartnerId,
+    String? redemptionCode,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
     if (trimmedEmail.isEmpty) throw Exception('Email address is required');
@@ -106,17 +113,43 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     }
 
     final userId = 'usr_owner_signup_${DateTime.now().millisecondsSinceEpoch}';
-    final profile = UserProfile(
-      userId: userId,
-      businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',
-      role: AppConstants.roleOwner,
-      displayName: displayName.trim(),
-      email: trimmedEmail,
-      joinedAt: DateTime.now(),
-      isActive: true,
-      businessName: displayName.trim(),
-      planTier: 'free',
-    );
+    UserProfile profile;
+
+    if (redemptionCode != null && _demoActivationKeys.containsKey(redemptionCode)) {
+      if (_redeemedDemoKeys.contains(redemptionCode)) {
+        throw Exception('This activation key has already been used');
+      }
+      final key = _demoActivationKeys[redemptionCode]!;
+      profile = UserProfile(
+        userId: userId,
+        businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',
+        role: AppConstants.roleOwner,
+        displayName: displayName.trim(),
+        email: trimmedEmail,
+        joinedAt: DateTime.now(),
+        isActive: true,
+        businessName: key['businessName'],
+        primaryColor: key['primaryColor'],
+        jobId: key['jobId'],
+        selectedCategory: key['jobId'],
+        planTier: 'premium',
+      );
+      _redeemedDemoKeys.add(redemptionCode);
+    } else if (redemptionCode != null) {
+      throw Exception('Invalid or already-used activation key');
+    } else {
+      profile = UserProfile(
+        userId: userId,
+        businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',
+        role: AppConstants.roleOwner,
+        displayName: displayName.trim(),
+        email: trimmedEmail,
+        joinedAt: DateTime.now(),
+        isActive: true,
+        businessName: displayName.trim(),
+        planTier: 'free',
+      );
+    }
 
     _signedUpProfiles[trimmedEmail] = profile;
     await _persistProfile(profile);

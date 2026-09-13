@@ -10,6 +10,7 @@ import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dar
 import 'package:personal_wellness_trainer/data/sources/supabase/supabase_auth_source.dart'; 
 import 'package:personal_wellness_trainer/data/sources/supabase/supabase_team_source.dart';
 import 'package:personal_wellness_trainer/data/repositories/team_repository.dart';
+import 'package:personal_wellness_trainer/engine/payments/payment_gateway.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_repository.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -27,11 +28,13 @@ class AuthNotifier extends Notifier<AuthState> {
 
   late final AuthRepository _repository;
   late final TeamRepository _teamRepository;
+  late final PaymentGateway _paymentGateway;
 
   @override
   AuthState build() {
     _repository = _resolveRepository();
     _teamRepository = _resolveTeamRepository();
+    _paymentGateway = _resolvePaymentGateway();
     
     // ── DEVELOPER SANDBOX BYPASS ──
     if (BuyerConfig.testBypassRole != null) {
@@ -78,44 +81,45 @@ class AuthNotifier extends Notifier<AuthState> {
     required String email,
     required String password,
     required String displayName,
-    required String role, 
-    // Only used by accept_invitation_screen.dart's real-mode invite-accept
-    // path — see AuthRepository.signUp's doc comment. The Owner
-    // self-signup screen never passes these, so behavior there is
-    // unchanged (fresh businessId, no category/partner).
-    String? businessId,
-    String? categoryId,
-    String? primaryPartnerId,
+    // The only thing distinguishing "which of the 3 cases this is" — see
+    // AuthRepository.signUp's doc comment. Null = genuine fresh Owner
+    // self-signup (SignupScreen, Owner-only). Non-null = redeeming either
+    // an invite link (lands as Partner/Staff/Client in an existing
+    // business) or an activation key (spins up a new Pro Owner business)
+    // — which one, and every resulting field (role, business_id,
+    // category_id, primary_partner_id, plan_tier, business_name, etc), is
+    // resolved SERVER-SIDE from the actual row that code points to. This
+    // method no longer decides or re-asserts the role itself — doing so
+    // was exactly the client-trust bug this whole rework fixes.
+    String? redemptionCode,
   }) async {
     if (state is AuthLoading) return;
     state = const AuthLoading();
-    AppLogger.info('Signing up as $role…', tag: _tag);
+    AppLogger.info('Signing up…', tag: _tag);
 
     try {
       final profile = await _repository.signUp(
         email: email.trim(),
         password: password,
         displayName: displayName.trim(),
-        businessId: businessId,
-        role: role,
-        categoryId: categoryId,
-        primaryPartnerId: primaryPartnerId,
+        redemptionCode: redemptionCode,
       );
-      
-      final updatedProfile = profile.copyWith(role: role);
+
       // ensureOwnerRow is mock-only: it substitutes for what Supabase's
       // on_auth_user_created trigger already does automatically for real
       // sign-ups (see triggers.sql) — no real-mode equivalent needed.
-      if (role == AppConstants.roleOwner && DataConfig.useMockData) {
+      // Reads profile.role from the ALREADY-RESOLVED returned profile,
+      // never a client-supplied value.
+      if (profile.role == AppConstants.roleOwner && DataConfig.useMockData) {
         MockTeamSource().ensureOwnerRow(
-          userId: updatedProfile.userId,
-          businessId: updatedProfile.businessId,
-          displayName: updatedProfile.displayName,
-          email: updatedProfile.email,
+          userId: profile.userId,
+          businessId: profile.businessId,
+          displayName: profile.displayName,
+          email: profile.email,
         );
       }
-      state = AuthAuthenticated(profile: updatedProfile, isNewOwner: role == 'owner');
-      AppLogger.info('Sign-up complete: ${updatedProfile.displayName}', tag: _tag);
+      state = AuthAuthenticated(profile: profile, isNewOwner: profile.role == AppConstants.roleOwner);
+      AppLogger.info('Sign-up complete: ${profile.displayName}', tag: _tag);
     } catch (e, st) {
       AppLogger.error('Sign-up failed', tag: _tag, error: e, stackTrace: st);
       state = AuthUnauthenticated(errorMessage: _friendlyError(e));
@@ -205,6 +209,17 @@ class AuthNotifier extends Notifier<AuthState> {
     final current = state as AuthAuthenticated;
 
     state = const AuthLoading();
+
+    // Payment gate — checked BEFORE anything irreversible below (minting
+    // a new businessId, migrating clients). Ships free (always true);
+    // see payment_gateway.dart for how a buyer wires in a real charge.
+    final paid = await _paymentGateway.chargeForUpgrade(current.profile);
+    if (!paid) {
+      state = current; // restore — nothing changed, no partial upgrade
+      AppLogger.info('Upgrade to Premium blocked: payment not completed', tag: _tag);
+      return;
+    }
+
     await Future<void>.delayed(AppConstants.mockDelay); 
 
     UserProfile updated;
@@ -401,6 +416,12 @@ class AuthNotifier extends Notifier<AuthState> {
     return SupabaseTeamSource();
   }
 
+  // Ships free by default — see payment_gateway.dart's own doc comment
+  // for exactly where a buyer swaps this for a real Stripe/PayPal/
+  // Payoneer/etc implementation. Nothing else in upgradeToPremium() below
+  // needs to change either way.
+  PaymentGateway _resolvePaymentGateway() => FreePaymentGateway();
+
   Future<void> _tryRestoreSession() async {
     try {
       final profile = await _repository.restoreSession();
@@ -463,6 +484,7 @@ class QaFreshAuthNotifier extends AuthNotifier {
   AuthState build() {
     _repository = _resolveRepository();
     _teamRepository = _resolveTeamRepository();
+    _paymentGateway = _resolvePaymentGateway();
     return const AuthUnauthenticated();
   }
 }

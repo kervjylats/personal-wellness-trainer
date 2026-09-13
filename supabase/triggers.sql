@@ -2,22 +2,108 @@
 -- Personal Wellness Trainer Database Automations and Triggers
 
 -- ── 1. AUTOMATIC PROFILE CREATION TRIGGER ────────────────────────────────────
--- Automatically inserts a row into the public profiles table when a user signs up.
+-- Rewritten for the unified invite/activation-key redemption flow.
+--
+-- SECURITY FIX: this used to trust raw_user_meta_data's role/business_id
+-- directly — meaning anyone calling Supabase Auth's signup endpoint
+-- directly (bypassing the app's UI entirely) could claim role='owner' and
+-- an arbitrary existing business_id, inserting themselves as the Owner of
+-- a business they have no relationship to. Now the ONLY thing the client
+-- can hand this trigger is a single opaque redemption_code — everything
+-- else (role, business_id, category_id, primary_partner_id) is resolved
+-- SERVER-SIDE from the actual invite_links/activation_keys row that code
+-- points to. A client can no longer just assert who they are.
+--
+-- Three cases, tried in order:
+--   1. redemption_code matches an invite_links token → joining an
+--      EXISTING business as Partner/Staff/Client, exactly as that link
+--      specifies. Client referral chains (a client invited by another
+--      client) resolve to the inviting client's own owner here too —
+--      moved from accept_invitation_screen.dart's old _resolveRealOwnerId
+--      Dart logic into this single server-side place.
+--   2. redemption_code matches an activation_keys code (and isn't
+--      already redeemed) → spinning up a BRAND NEW Pro Owner business
+--      from that key's pre-configured job/business_name/color. The key
+--      is marked redeemed in this SAME transaction — atomic with the
+--      profile creation, so a half-redeemed state can never exist.
+--   3. No redemption_code at all → genuine fresh Owner self-signup
+--      (SignupScreen, Owner-only) — fresh random business_id, role
+--      'owner', plan_tier 'free', exactly like today.
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
-    default_role text;
-    default_biz_id uuid;
+    v_code text;
+    v_link public.invite_links;
+    v_key public.activation_keys;
+    v_resolved_role text;
+    v_resolved_business_id uuid;
+    v_resolved_category_id text;        -- profiles.category_id: Partner/Staff-specific specialty, only set on invite path
+    v_resolved_selected_category text;  -- profiles.selected_category: Owner's own job category, only set on activation-key path
+    v_resolved_primary_partner_id uuid;
+    v_resolved_plan_tier text := 'free';
+    v_resolved_business_name text;
+    v_resolved_primary_color text;
+    v_resolved_job_id text;
+    v_inviter public.profiles;
 begin
-    -- Extract role and businessId from raw_user_meta_data if present, otherwise set defaults
-    default_role := coalesce(new.raw_user_meta_data->>'role', 'client');
-    default_biz_id := coalesce((new.raw_user_meta_data->>'business_id')::uuid, uuid_generate_v4());
+    v_code := new.raw_user_meta_data->>'redemption_code';
 
-    -- category_id / primary_partner_id are only ever present when this
-    -- signup is really an invite acceptance (see SupabaseAuthSource.signUp
-    -- and accept_invitation_screen.dart) — a plain Owner self-signup never
-    -- sets them, and both stay null in that case, same as before this
-    -- trigger knew about them.
+    if v_code is not null then
+        -- Case 1: try invite_links first.
+        select * into v_link from public.invite_links where token = v_code;
+
+        if v_link.id is not null then
+            v_resolved_business_id := v_link.business_id;
+            v_resolved_role := v_link.target_role;
+            v_resolved_category_id := v_link.category_id;
+
+            if v_link.target_role = 'client' then
+                -- Referral chains resolve to the ROOT owner/partner, not
+                -- the immediate inviter, if the inviter is themselves a
+                -- client — mirrors mock_team_source.dart's
+                -- _resolveClientOwnerId exactly, moved here from what was
+                -- previously accept_invitation_screen.dart Dart logic.
+                select * into v_inviter from public.profiles where user_id = v_link.invited_by_user_id;
+                if v_inviter.role = 'client' then
+                    v_resolved_primary_partner_id := coalesce(v_inviter.primary_partner_id, v_link.invited_by_user_id);
+                else
+                    v_resolved_primary_partner_id := v_link.invited_by_user_id;
+                end if;
+            end if;
+
+            -- Mark the link used, atomically, in the same transaction as
+            -- the profile it creates.
+            update public.invite_links set use_count = use_count + 1 where id = v_link.id;
+
+        else
+            -- Case 2: try activation_keys.
+            select * into v_key from public.activation_keys where key_code = v_code;
+
+            if v_key.key_code is null then
+                raise exception 'Invalid redemption code';
+            end if;
+            if v_key.redeemed_by_user_id is not null then
+                raise exception 'This activation key has already been used';
+            end if;
+
+            v_resolved_business_id := uuid_generate_v4();
+            v_resolved_role := 'owner';
+            v_resolved_plan_tier := 'premium';
+            v_resolved_business_name := v_key.business_name;
+            v_resolved_primary_color := v_key.primary_color;
+            v_resolved_job_id := v_key.job_id;
+            v_resolved_selected_category := v_key.job_id;
+
+            update public.activation_keys
+                set redeemed_by_user_id = new.id, redeemed_at = timezone('utc'::text, now())
+                where key_code = v_code;
+        end if;
+    else
+        -- Case 3: genuine fresh Owner self-signup — unchanged from before.
+        v_resolved_business_id := uuid_generate_v4();
+        v_resolved_role := 'owner';
+    end if;
+
     insert into public.profiles (
         user_id,
         business_id,
@@ -26,16 +112,24 @@ begin
         email,
         plan_tier,
         category_id,
-        primary_partner_id
+        primary_partner_id,
+        business_name,
+        primary_color,
+        job_id,
+        selected_category
     ) values (
         new.id,
-        default_biz_id,
-        default_role,
+        v_resolved_business_id,
+        v_resolved_role,
         coalesce(new.raw_user_meta_data->>'display_name', 'New Member'),
         new.email,
-        'free',
-        new.raw_user_meta_data->>'category_id',
-        (new.raw_user_meta_data->>'primary_partner_id')::uuid
+        v_resolved_plan_tier,
+        v_resolved_category_id,
+        v_resolved_primary_partner_id,
+        v_resolved_business_name,
+        v_resolved_primary_color,
+        v_resolved_job_id,
+        v_resolved_selected_category
     );
     return new;
 end;
@@ -94,6 +188,64 @@ returns setof public.invite_links as $$
 begin
     return query
     select * from public.invite_links where token = p_token;
+end;
+$$ language plpgsql security definer;
+
+
+-- ── 3b. ACTIVATION KEY LOOKUP FUNCTION ────────────────────────────────────────
+-- Same reasoning as get_invite_link_by_token — no public SELECT policy
+-- exists on activation_keys, so this is the only way to look one up
+-- before having a session.
+create or replace function public.get_activation_key_by_code(p_code text)
+returns setof public.activation_keys as $$
+begin
+    return query
+    select * from public.activation_keys where key_code = p_code;
+end;
+$$ language plpgsql security definer;
+
+
+-- ── 3c. RESOLVE REDEMPTION CODE (PREVIEW) FUNCTION ───────────────────────────
+-- Lets the universal redemption screen show the person what they're about
+-- to do — "Join Sunrise Yoga as a Client" / "Create your own Pro business,
+-- Sunrise Yoga" / a clear error — BEFORE they've entered email/password
+-- and actually triggered handle_new_user(). Read-only preview only; the
+-- real resolution (and the one-time-use enforcement) happens inside
+-- handle_new_user() itself at actual signup time, not here — this can be
+-- called repeatedly with no side effects, unlike redemption itself.
+create or replace function public.resolve_redemption_code(p_code text)
+returns table (
+    kind text,               -- 'invite' | 'activation_key' | 'invalid'
+    target_role text,
+    business_name text,
+    error_message text
+) as $$
+declare
+    v_link public.invite_links;
+    v_key public.activation_keys;
+    v_owner_business_name text;
+begin
+    select * into v_link from public.invite_links where token = p_code;
+    if v_link.id is not null then
+        select p.business_name into v_owner_business_name
+            from public.profiles p
+            where p.role = 'owner' and p.business_id = v_link.business_id
+            limit 1;
+        return query select 'invite'::text, v_link.target_role, v_owner_business_name, null::text;
+        return;
+    end if;
+
+    select * into v_key from public.activation_keys where key_code = p_code;
+    if v_key.key_code is not null then
+        if v_key.redeemed_by_user_id is not null then
+            return query select 'invalid'::text, null::text, null::text, 'This activation key has already been used'::text;
+            return;
+        end if;
+        return query select 'activation_key'::text, 'owner'::text, v_key.business_name, null::text;
+        return;
+    end if;
+
+    return query select 'invalid'::text, null::text, null::text, 'This code isn''t valid — check it and try again'::text;
 end;
 $$ language plpgsql security definer;
 

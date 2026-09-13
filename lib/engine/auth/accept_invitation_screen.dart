@@ -1,6 +1,22 @@
 // lib/engine/auth/accept_invitation_screen.dart
 //
-// Accept invitation screen. P7-05.
+// The universal redemption screen — one code field handles every way
+// someone (other than a fresh self-signed-up Owner) gets into the app:
+//   - An invite link token (Partner/Staff/Client joining an EXISTING
+//     business, from an Owner/Partner/Client's invite)
+//   - An activation key (spinning up a BRAND NEW Pro Owner business,
+//     bought from the buyer/dev — see activation_keys in schema.sql)
+//
+// The person never needs to know which kind of code they have — this
+// screen tries both. Real-mode resolution of which one it is, and every
+// resulting field (role, business_id, category_id, primary_partner_id
+// for an invite; business_name/primary_color/job_id/plan_tier for a key),
+// happens SERVER-SIDE in handle_new_user() (triggers.sql) — this screen
+// no longer resolves any of that itself. That used to live here
+// (_resolveRealOwnerId, plus businessId/categoryId/primaryPartnerId
+// params on signUp()) — moved server-side because a client should never
+// be the one asserting its own role/business, which is exactly the
+// privilege-escalation class of bug this whole rework closes.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,28 +76,6 @@ class _AcceptInvitationScreenState
     super.dispose();
   }
 
-  /// Client-invited-by-client referral chains resolve to the SAME root
-  /// owner/partner as the inviting client, not the inviting client
-  /// themselves — mirrors mock_team_source.dart's _resolveClientOwnerId
-  /// exactly in effect, just expressed as a DB lookup instead of an
-  /// in-memory scan (real mode has no equivalent single in-memory store
-  /// to search). Owner/Partner/Staff invites never need this — they ARE
-  /// the root, so link.invitedByUserId is already correct as-is.
-  Future<String> _resolveRealOwnerId(TokenValid tokenResult) async {
-    final link = tokenResult.link;
-    if (link.targetRole != 'client' || link.invitedByRole != 'client') {
-      return link.invitedByUserId;
-    }
-    final members =
-        await ref.read(_teamRepoForInvitesProvider).getMembers(link.businessId);
-    for (final m in members) {
-      if (m.userId == link.invitedByUserId) {
-        return m.primaryPartnerId ?? link.invitedByUserId;
-      }
-    }
-    return link.invitedByUserId;
-  }
-
   Future<void> _accept() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
@@ -89,94 +83,127 @@ class _AcceptInvitationScreenState
       _error = null;
     });
 
-    final token = _tokenController.text.trim();
+    final code = _tokenController.text.trim();
+
+    // Try it as an invite link first — cleanly returns TokenInvalid for
+    // an unknown code rather than throwing, so falling through to the
+    // activation-key attempt below is always safe.
     final result =
-        await ref.read(inviteLinkNotifierProvider.notifier).validateToken(token);
+        await ref.read(inviteLinkNotifierProvider.notifier).validateToken(code);
 
     if (!mounted) return;
 
     switch (result) {
-      case TokenInvalid(:final reason):
-        setState(() {
-          _isSaving = false;
-          _error = reason;
-        });
+      case TokenValid(:final link):
+        await _acceptAsInvite(link);
         return;
 
-      case TokenValid(:final link):
-        try {
-          if (DataConfig.useMockData) {
-            // Creates the real team-member record — the SAME data source
-            // the Owner's Network/Team screen reads from, so the new
-            // member shows up there immediately, in any panel watching it.
-            final member = await ref.read(_teamRepoForInvitesProvider).inviteMember(
-                  businessId: link.businessId,
-                  invitedByUserId: link.invitedByUserId,
-                  role: link.targetRole,
-                  displayName: _nameController.text.trim(),
-                  email: _emailController.text.trim(),
-                  categoryId: link.categoryId,
-                );
+      case TokenInvalid():
+        await _acceptAsActivationKey(code);
+        return;
+    }
+  }
 
-            final profile = UserProfile(
-              userId: member.userId,
-              businessId: member.businessId,
-              role: member.role,
-              displayName: member.displayName,
-              joinedAt: member.joinedAt,
-              isActive: member.isActive,
-              email: member.email,
-              categoryId: member.categoryId,
-              primaryPartnerId: member.primaryPartnerId,
-              featureToggles: member.featureToggles,
+  Future<void> _acceptAsInvite(InviteLinkModel link) async {
+    try {
+      if (DataConfig.useMockData) {
+        // Creates the real team-member record — the SAME data source
+        // the Owner's Network/Team screen reads from, so the new
+        // member shows up there immediately, in any panel watching it.
+        final member = await ref.read(_teamRepoForInvitesProvider).inviteMember(
+              businessId: link.businessId,
+              invitedByUserId: link.invitedByUserId,
+              role: link.targetRole,
+              displayName: _nameController.text.trim(),
+              email: _emailController.text.trim(),
+              categoryId: link.categoryId,
             );
 
-            await ref.read(authNotifierProvider.notifier).completeInviteJoin(profile);
-          } else {
-            // Real mode: creates an actual Supabase Auth account. The
-            // on_auth_user_created trigger (triggers.sql) reads
-            // role/business_id/category_id/primary_partner_id straight
-            // off the signup metadata and creates the profiles row
-            // already correctly scoped to the INVITING business — not a
-            // fresh one of the invitee's own, which is what would happen
-            // if this called the Owner self-signup path instead.
-            final resolvedOwnerId = await _resolveRealOwnerId(result);
+        final profile = UserProfile(
+          userId: member.userId,
+          businessId: member.businessId,
+          role: member.role,
+          displayName: member.displayName,
+          joinedAt: member.joinedAt,
+          isActive: member.isActive,
+          email: member.email,
+          categoryId: member.categoryId,
+          primaryPartnerId: member.primaryPartnerId,
+          featureToggles: member.featureToggles,
+        );
 
-            await ref.read(authNotifierProvider.notifier).signUp(
-                  email: _emailController.text.trim(),
-                  password: _passwordController.text,
-                  displayName: _nameController.text.trim(),
-                  role: link.targetRole,
-                  businessId: link.businessId,
-                  categoryId: link.categoryId,
-                  primaryPartnerId:
-                      link.targetRole == 'client' ? resolvedOwnerId : null,
-                );
+        await ref.read(authNotifierProvider.notifier).completeInviteJoin(profile);
 
-            final authState = ref.read(authNotifierProvider);
-            if (authState is AuthUnauthenticated) {
-              throw Exception(authState.errorMessage ?? 'Sign-up failed.');
-            }
-          }
+        // Mock mode's inviteMember() doesn't touch invite_links itself —
+        // that bookkeeping still needs this explicit call here. (Real
+        // mode's trigger already increments use_count atomically as
+        // part of the same transaction that creates the profile — see
+        // handle_new_user() — so calling recordUse() again there would
+        // double-count it. This call is mock-only, deliberately.)
+        await ref.read(inviteLinkNotifierProvider.notifier).recordUse(link.id);
+      } else {
+        // Real mode: one call, one opaque code. Every field (role,
+        // business_id, category_id, primary_partner_id, including
+        // referral-chain resolution for a client invited by another
+        // client) is resolved server-side inside handle_new_user() —
+        // this screen doesn't compute any of it anymore.
+        await ref.read(authNotifierProvider.notifier).signUp(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              displayName: _nameController.text.trim(),
+              redemptionCode: link.token,
+            );
 
-          // Marks the invite link as used (so a single-use link can't be
-          // redeemed twice) — and only AFTER the account was successfully
-          // created, so a failure above doesn't burn the invite for nothing.
-          await ref.read(inviteLinkNotifierProvider.notifier).recordUse(link.id);
-
-          if (!mounted) return;
-          setState(() {
-            _isSaving = false;
-            _accepted = true;
-            _joinedRole = link.targetRole;
-          });
-        } catch (e) {
-          if (!mounted) return;
-          setState(() {
-            _isSaving = false;
-            _error = 'Could not complete sign-up. Please try again.';
-          });
+        final authState = ref.read(authNotifierProvider);
+        if (authState is AuthUnauthenticated) {
+          throw Exception(authState.errorMessage ?? 'Sign-up failed.');
         }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _accepted = true;
+        _joinedRole = link.targetRole;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = 'Could not complete sign-up. Please try again.';
+      });
+    }
+  }
+
+  Future<void> _acceptAsActivationKey(String code) async {
+    try {
+      await ref.read(authNotifierProvider.notifier).signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            displayName: _nameController.text.trim(),
+            redemptionCode: code,
+          );
+
+      final authState = ref.read(authNotifierProvider);
+      if (authState is AuthUnauthenticated) {
+        // Covers both "wrong code entirely" and "already used" — both
+        // MockAuthSource and the real handle_new_user() trigger throw a
+        // specific message for each, surfaced via _friendlyError().
+        throw Exception(authState.errorMessage ?? 'Invalid code.');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _accepted = true;
+        _joinedRole = 'owner';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = "That code isn't valid — double-check it and try again.";
+      });
     }
   }
 
@@ -200,7 +227,7 @@ class _AcceptInvitationScreenState
               constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
               child: _accepted
                   ? _AcceptedView(appName: appName, joinedRole: _joinedRole)
-                  : _InviteFormView(
+                  : _RedemptionFormView(
                       formKey: _formKey,
                       tokenController: _tokenController,
                       nameController: _nameController,
@@ -222,8 +249,8 @@ class _AcceptInvitationScreenState
   }
 }
 
-class _InviteFormView extends StatelessWidget {
-  const _InviteFormView({
+class _RedemptionFormView extends StatelessWidget {
+  const _RedemptionFormView({
     required this.formKey,
     required this.tokenController,
     required this.nameController,
@@ -261,32 +288,29 @@ class _InviteFormView extends StatelessWidget {
         children: [
           const SizedBox(height: AppSpacing.xl),
           Icon(
-            Icons.handshake_outlined,
+            Icons.vpn_key_outlined,
             size: AppSpacing.iconSizeXxl,
             color: colorScheme.primary,
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            "You're invited to join $appName",
+            'Enter your code to get started',
             style: AppTextStyles.headlineLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
           const Text(
-            'Enter your invite code to get started',
+            'Whether you were invited by someone or bought a license, '
+            'enter the code you were given below.',
             style: AppTextStyles.bodyMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
-          // Real, editable invite token field — paste/type the code shown
-          // when an Owner/Partner generates an invite link (e.g. via the
-          // QR dialog on the Network screen, where the raw token is also
-          // shown as selectable text underneath the QR code).
           AppTextField(
-            hint: 'e.g. wlp_000002',
-            label: 'Invite Code',
+            hint: 'e.g. wlp_000002 or ZEN-YOGA-777',
+            label: 'Code',
             controller: tokenController,
-            validator: AppValidators.required(fieldName: 'Invite Code'),
+            validator: AppValidators.required(fieldName: 'Code'),
             textInputAction: TextInputAction.next,
             prefixIcon: Icons.vpn_key_outlined,
           ),
@@ -339,7 +363,7 @@ class _InviteFormView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           PrimaryButton(
-            label: 'Accept Invitation',
+            label: 'Continue',
             onPressed: isSaving ? null : onAccept,
             isLoading: isSaving,
           ),
@@ -381,13 +405,13 @@ class _AcceptedView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         const Text(
-          "You're in!",
+          "You're all set!",
           style: AppTextStyles.headlineLarge,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Your invitation to $appName has been accepted.',
+          'Your account on $appName is ready.',
           style: AppTextStyles.bodyMedium,
           textAlign: TextAlign.center,
         ),

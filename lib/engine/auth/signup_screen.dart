@@ -14,7 +14,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:personal_wellness_trainer/core/constants/app_constants.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
@@ -56,7 +55,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           email: _emailController.text,
           password: _passwordController.text,
           displayName: _nameController.text,
-          role: AppConstants.roleOwner,
+          // No redemptionCode — a genuine fresh Owner self-signup always
+          // resolves to role='owner' server-side on its own now.
         );
   }
 

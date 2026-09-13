@@ -159,19 +159,31 @@ create policy "Allow business members to update their own agreements"
     );
 
 -- ── 3. ACTIVATION KEYS TABLE 🎟️ (NEW) ─────────────────────────────────────────
+-- Single-use tracking added when the universal redemption flow was built —
+-- previously this table had no way to prevent the SAME key being redeemed
+-- by multiple different people, each spinning up their own business under
+-- the same pre-configured name/job/color. redeem_activation_key() (see
+-- triggers.sql) checks and sets these atomically, so two people can't both
+-- redeem the same key in a race the same way two people can't both
+-- over-redeem loyalty points.
 create table public.activation_keys (
     key_code text primary key, -- e.g., 'ZEN-YOGA-777'
     job_id text not null,       -- e.g., 'yoga_studio'
     business_name text not null,
-    primary_color text not null default '#2471A3'
+    primary_color text not null default '#2471A3',
+    redeemed_by_user_id uuid references public.profiles(user_id) on delete set null,
+    redeemed_at timestamp with time zone
 );
 
 alter table public.activation_keys enable row level security;
 
--- Allow public read access so the login screen can validate keys before account creation
-create policy "Allow public read access to validation keys"
-    on public.activation_keys for select
-    using (true);
+-- No public SELECT policy — same reasoning as invite_links: a `using
+-- (true)` policy here would let anyone unauthenticated read every buyer's
+-- entire key inventory (every code, every business name, every job type)
+-- via a plain table select, not just look up the one key they already
+-- have. Lookup goes through get_activation_key_by_code() (SECURITY
+-- DEFINER, triggers.sql) instead — same pattern as
+-- get_invite_link_by_token().
 
 -- ── 4. TRANSACTIONS TABLE ────────────────────────────────────────────────────
 create table public.transactions (

@@ -19,6 +19,7 @@ import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/auth/forgot_password_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/onboarding_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/signup_screen.dart';
+import 'package:personal_wellness_trainer/engine/auth/marketing_landing_screen.dart';
 import 'package:personal_wellness_trainer/engine/navigation/role_routes.dart';
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 import 'package:personal_wellness_trainer/modules/challenges/screens/challenge_detail_screen.dart';
@@ -53,6 +54,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.signupPath,
         name: RouteNames.signup,
         builder: (_, __) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.marketingLandingPath,
+        name: RouteNames.marketingLanding,
+        builder: (_, __) => const MarketingLandingScreen(),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -120,7 +126,8 @@ class _RouterNotifier extends ChangeNotifier {
             location == RouteNames.signupPath ||
             location == RouteNames.onboardingPath ||
             location == '/forgot-password' ||
-            location == RouteNames.acceptInvitationPath) {
+            location == RouteNames.acceptInvitationPath ||
+            location == RouteNames.marketingLandingPath) {
           return null;
         }
         return RouteNames.loginPath;
