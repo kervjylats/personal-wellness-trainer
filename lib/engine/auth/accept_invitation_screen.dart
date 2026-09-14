@@ -28,6 +28,7 @@ import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/utils/validators.dart';
 import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
+import 'package:personal_wellness_trainer/data/models/invite_link_model.dart';
 import 'package:personal_wellness_trainer/data/models/user_profile.dart';
 import 'package:personal_wellness_trainer/data/repositories/team_repository.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dart';

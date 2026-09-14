@@ -67,7 +67,6 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     return profile;
   }
 
-  @override
   // A handful of fixed demo activation keys so the marketing landing
   // page's key-redemption path has something real to try in mock mode
   // too — mirrors real mode's activation_keys table, just in-memory.
