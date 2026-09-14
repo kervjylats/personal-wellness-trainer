@@ -96,7 +96,11 @@ begin
 
             update public.activation_keys
                 set redeemed_by_user_id = new.id, redeemed_at = timezone('utc'::text, now())
-                where key_code = v_code;
+                where key_code = v_code and redeemed_by_user_id IS NULL;
+
+            if not found then
+                raise exception 'This activation key has already been used';
+            end if;
         end if;
     else
         -- Case 3: genuine fresh Owner self-signup — unchanged from before.

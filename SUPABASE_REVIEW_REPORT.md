@@ -153,3 +153,65 @@
 **Schema tables with clean RLS** (19 of 27): agreements, activation_keys, invite_links, activities, marketplace_listings, partnership_requests, messages, schedule_slots, reservations, catalog_items, inventory_items, delivery_fees, media_items, reviews, rewards, challenges, homework, gps_points — all policies match their comments.
 
 **Missing files note:** `supabase_scheduling_source.dart` and `supabase_reservations_source.dart` were absent at review start (delivered separately, since applied). Both verified present and correct; notifiers properly use real sources.
+
+---
+
+## Pass 2 — 2026-09-14
+
+Targeted review of commit `eff9cfc` covering: rewritten `handle_new_user()` trigger, activation key single-use enforcement, `signUp()` call sites against new signature, `url_launcher` dependency, and exception message surfacing. Invoked from Claude's request to verify the unified invite/activation-key redemption flow.
+
+### Fixes Made
+
+**1. Activation key race condition in `handle_new_user()` (triggers.sql)**
+
+Same class as the `adjust_stock` and `redeem_loyalty_points` races fixed in pass 1. The SELECT + UPDATE in Case 2 (activation key branch) were two separate statements — under PostgreSQL READ COMMITTED, two concurrent signups with the same key both passed the `redeemed_by_user_id IS NOT NULL` check, then both succeeded the UPDATE (the second overwrote the first's `redeemed_by_user_id`), creating two profiles for one key.
+
+**Fix:** Added `AND redeemed_by_user_id IS NULL` to the UPDATE's WHERE clause + `if not found` check afterward — identical pattern to `adjust_stock` (`WHERE stock_count + p_delta >= 0`) and `redeem_loyalty_points` (`WHERE total_points >= p_amount`). The existing SELECT + null-check above stays as a fast-path for obviously-invalid codes.
+
+### Flagged, Not Fixed
+
+**2. Old `activateLicenseKey` path broken in real mode (auth_screen.dart → supabase_auth_source.dart:100)**
+
+The old `activateLicenseKey` method does a direct INSERT into `profiles` (bypassing the trigger), which is blocked by RLS — the `profiles` table has no INSERT policy (flagged as Critical 4 in pass 1, never resolved). This means `auth_screen.dart`'s license key activation dialog silently fails in real mode. The new redemption flow (via `signUp(redemptionCode:)` + `handle_new_user()`) works correctly and is the intended replacement. Recommendation: deprecate the old path rather than migrating it, since the new marketing-page flow fully replaces what it was for. Needs a product decision.
+
+**3. Exception message surfacing — untested**
+
+The trigger raises `raise exception 'This activation key has already been used'` / `'Invalid redemption code'`. Whether Supabase's `supabase_flutter` wraps this in a generic `AuthException` or surfaces the exact message text through `authState.errorMessage` via `_friendlyError(e)` requires a real Supabase project to verify. Cannot pass/fail without runtime testing. Flag as untested.
+
+### Confirmed Solid
+
+**`handle_new_user()` trigger — all three branches secure:**
+- Case 1 (invite token): role, business_id, category_id, primary_partner_id all resolve server-side from the `invite_links` row. Client only injects `display_name` (cosmetic). Referral chain resolution for client-invited-by-client correctly walks up to root owner.
+- Case 2 (activation key): role hardcodes `'owner'`, plan_tier hardcodes `'premium'`, business_id is `uuid_generate_v4()`. Client injects nothing.
+- Case 3 (fresh signup): role hardcodes `'owner'`, fresh business_id. Client injects nothing.
+
+**`signUp()` call sites (4 total) — all clean:**
+- `signup_screen.dart:54` — `redemptionCode: null` (genuine fresh Owner self-signup). Correct.
+- `accept_invitation_screen.dart:150` — `redemptionCode: link.token`. Correct.
+- `accept_invitation_screen.dart:180` — `redemptionCode: code`. Correct.
+- `marketing_landing_screen.dart:74` — `redemptionCode: _codeController.text.trim()`. Correct.
+- No old params (businessId, role, categoryId, primaryPartnerId) passed anywhere.
+- No role re-assertions after signUp returns — `auth_notifier.dart:121` reads `profile.role` from the server-resolved profile, never overrides it.
+
+**`resolve_redemption_code()` — correct:**
+- Read-only preview function, no side effects. SECURITY DEFINER for unauthenticated access (before signup). TOCTOU between preview and signup is a UX concern only — the signup function correctly handles the "already used" case via the atomic fix above.
+
+**`url_launcher` dependency — valid:**
+- `pubspec.yaml:19` — `url_launcher: ^6.3.0`
+- `pubspec.lock` — all 7 platform variants present
+- `marketing_landing_screen.dart:105-106` — `canLaunchUrl(uri)` + `launchUrl(uri, mode: LaunchMode.externalApplication)` — correct API usage
+
+**`invite_links` use_count increment — known accepted edge case:**
+- Race could under-count by one in a genuine simultaneous-accept scenario, but doesn't affect correctness of who joined which business under which role. Deliberately not fixed (documented in invite_source.dart:69-75).
+
+**All 8 SECURITY DEFINER functions — authorization checks verified:**
+- `handle_new_user` — no auth needed (trigger on auth.users insert), but client can only pass opaque redemption_code
+- `migrate_partner_clients` — checks `auth.uid() == partner_id`
+- `get_invite_link_by_token` — no auth by design (exact-token scoped)
+- `get_activation_key_by_code` — no auth by design (exact-code scoped, read-only)
+- `resolve_redemption_code` — no auth by design (read-only preview, no side effects)
+- `mark_commission_paid` — requires Owner in commission's business
+- `adjust_stock` — requires Owner in item's business
+- `add_loyalty_points` — requires Owner in target business
+- `redeem_loyalty_points` — checks `auth.uid() == p_user_id`, atomic WHERE
+- `mark_challenge_day_complete` — checks `auth.uid() == p_user_id`, atomic WHERE
