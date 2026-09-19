@@ -29,9 +29,9 @@ abstract class AuthRepository {
   Future<bool> isNewOwner(String userId);
 
   Future<void> setOnboardingComplete(String userId, {UserProfile? updatedProfile});
-
-  /// ── Smart License Activation Engine ──
-  /// Validates an activation key against the active database.
-  /// Returns the registered [UserProfile] on success, or null if invalid.
-  Future<UserProfile?> activateLicenseKey(String key);
+  // activateLicenseKey() removed — superseded by signUp(redemptionCode:),
+  // which handles activation-key redemption correctly (real Supabase
+  // Auth account, atomic single-use check, no broken deterministic-UUID
+  // profile insert that would fail the auth.users FK constraint). See
+  // MarketingLandingScreen / accept_invitation_screen.dart.
 }

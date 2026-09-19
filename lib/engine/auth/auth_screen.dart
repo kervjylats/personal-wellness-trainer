@@ -15,6 +15,18 @@ import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 
+// activateLicenseKey / _ActivationDialog / "Activate a Practice Key" removed
+// — superseded by the unified redemption flow (signUp(redemptionCode:)),
+// reachable here via "Have an invite code? Join here" and from
+// MarketingLandingScreen (/get-started). The old path was redundant AND
+// broken in real mode (direct profiles insert with a deterministic fake
+// UUID that would fail the auth.users FK constraint, no INSERT policy —
+// flagged as Critical 4 in the Supabase review, never fixed because the
+// new flow was meant to replace it entirely). Found still sitting here,
+// reachable, during mock-mode testing of the new flow — removed rather
+// than migrated, since it has nothing left to do that the new path
+// doesn't already do correctly and securely.
+
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
   @override
@@ -78,7 +90,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     onForgotPassword: () => context.goNamed(RouteNames.forgotPassword),
                     onCreateAccount:  () => context.goNamed(RouteNames.signup),
                     onInviteCode:     () => context.goNamed(RouteNames.acceptInvitation),
-                    onActivate:       () => _showActivationSheet(context, ref),
                   ),
                 ],
               ),
@@ -86,13 +97,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showActivationSheet(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => _ActivationDialog(ref: ref),
     );
   }
 }
@@ -113,7 +117,6 @@ class _SignInForm extends StatelessWidget {
     required this.onForgotPassword,
     required this.onCreateAccount,
     required this.onInviteCode,
-    required this.onActivate,
   });
 
   final GlobalKey<FormState> formKey;
@@ -127,7 +130,6 @@ class _SignInForm extends StatelessWidget {
   final VoidCallback onForgotPassword;
   final VoidCallback onCreateAccount;
   final VoidCallback onInviteCode;
-  final VoidCallback onActivate;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +178,6 @@ class _SignInForm extends StatelessWidget {
             onForgotPasswordPressed: onForgotPassword,
             onCreateAccountPressed:  onCreateAccount,
             onInviteCodePressed:     onInviteCode,
-            onActivatePressed:       onActivate,
           ),
         ],
       ),
@@ -212,13 +213,11 @@ class _AuthNavigationButtons extends StatelessWidget {
     required this.onForgotPasswordPressed,
     required this.onCreateAccountPressed,
     required this.onInviteCodePressed,
-    required this.onActivatePressed,
   });
 
   final VoidCallback onForgotPasswordPressed;
   final VoidCallback onCreateAccountPressed;
   final VoidCallback onInviteCodePressed;
-  final VoidCallback onActivatePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -240,102 +239,6 @@ class _AuthNavigationButtons extends StatelessWidget {
         TextButton(
           onPressed: onInviteCodePressed,
           child: const Text('Have an invite code? Join here'),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        TextButton.icon(
-          onPressed: onActivatePressed,
-          icon: const Icon(Icons.vpn_key_outlined, size: 18),
-          label: const Text('Activate a Practice Key'),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActivationDialog extends StatefulWidget {
-  const _ActivationDialog({required this.ref});
-  final WidgetRef ref;
-
-  @override
-  State<_ActivationDialog> createState() => _ActivationDialogState();
-}
-
-class _ActivationDialogState extends State<_ActivationDialog> {
-  final _keyController = TextEditingController();
-  bool _isActivating = false;
-  String? _errorMsg;
-
-  @override
-  void dispose() {
-    _keyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final key = _keyController.text.trim();
-    if (key.isEmpty) return;
-
-    setState(() {
-      _isActivating = true;
-      _errorMsg = null;
-    });
-
-    final success = await widget.ref.read(authNotifierProvider.notifier).activateLicenseKey(key);
-
-    if (mounted) {
-      setState(() => _isActivating = false);
-      if (success) {
-        Navigator.of(context).pop();
-      } else {
-        setState(() => _errorMsg = 'Invalid key. Try: ZEN-YOGA-777');
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.vpn_key_outlined, color: theme.colorScheme.primary),
-          const SizedBox(width: AppSpacing.sm),
-          const Text('Activate License'),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Enter your dynamic activation key to set up your workspace instantly.',
-            style: AppTextStyles.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _keyController,
-            textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(
-              labelText: 'Activation Key',
-              hintText: 'e.g., ZEN-YOGA-777',
-            ),
-          ),
-          if (_errorMsg != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(_errorMsg!, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isActivating ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _isActivating ? null : _submit,
-          child: _isActivating
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Text('Activate'),
         ),
       ],
     );

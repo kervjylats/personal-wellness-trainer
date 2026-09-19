@@ -180,30 +180,6 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// ── Smart License Activation Engine (Cloud Connected!) 🎟️ ──
-  /// Delegates the validation directly to the active database repository!
-  Future<bool> activateLicenseKey(String key) async {
-    if (state is AuthLoading) return false;
-    state = const AuthLoading();
-    AppLogger.info('Validating license key: $key', tag: _tag);
-
-    try {
-      // Direct repository delegation! Talks to Supabase when useMockData is false.
-      final profile = await _repository.activateLicenseKey(key);
-
-      if (profile != null) {
-        state = AuthAuthenticated(profile: profile, isNewOwner: false);
-        AppLogger.info('License Activated: ${profile.displayName} is now Premium!', tag: _tag);
-        return true;
-      }
-    } catch (e, st) {
-      AppLogger.error('activateLicenseKey failed critically', tag: _tag, error: e, stackTrace: st);
-    }
-
-    state = const AuthUnauthenticated(errorMessage: 'Invalid Activation Key');
-    return false;
-  }
-
   Future<void> upgradeToPremium() async {
     if (state is! AuthAuthenticated) return;
     final current = state as AuthAuthenticated;

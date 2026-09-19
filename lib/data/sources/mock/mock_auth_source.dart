@@ -213,31 +213,6 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     }
   }
 
-  // Mock implementation of license key activation
-  @override
-  Future<UserProfile?> activateLicenseKey(String key) async {
-    await simulateNetworkDelay();
-
-    final trimmed = key.trim().toUpperCase();
-    if (trimmed == 'ZEN-YOGA-777') {
-      return UserProfile(
-        userId: 'owner_${trimmed.toLowerCase()}',
-        businessId: 'biz_${trimmed.toLowerCase()}',
-        role: AppConstants.roleOwner,
-        displayName: 'Tranquil Yoga Space',
-        email: 'owner@zenyoga.com',
-        joinedAt: DateTime.now(),
-        isActive: true,
-        businessName: 'Tranquil Yoga Space',
-        planTier: 'premium',
-        jobId: 'yoga_studio',
-        selectedCategory: 'yoga_studio',
-        primaryColor: '#7E57C2',
-      );
-    }
-    return null;
-  }
-
   Future<void> _saveSession(String email) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSessionEmail, email.trim().toLowerCase());
