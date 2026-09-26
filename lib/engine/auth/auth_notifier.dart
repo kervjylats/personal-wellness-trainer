@@ -180,50 +180,104 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Free Owner → Pro Owner. Same business, same roster, zero data loss —
+  /// only the plan tier changes (the owner stays in their existing
+  /// business; nothing is migrated or recreated).
+  ///
+  /// Owner-only. Associates/Staff/Clients promptly return without doing
+  /// anything (their launch path is [launchOwnBusiness]).
   Future<void> upgradeToPremium() async {
     if (state is! AuthAuthenticated) return;
     final current = state as AuthAuthenticated;
+    if (current.profile.role != AppConstants.roleOwner) return;
 
     state = const AuthLoading();
 
-    // Payment gate — checked BEFORE anything irreversible below (minting
-    // a new businessId, migrating clients). Ships free (always true);
-    // see payment_gateway.dart for how a buyer wires in a real charge.
+    // Payment gate — checked BEFORE anything irreversible. Ships free
+    // (FreePaymentGateway always returns true); see payment_gateway.dart
+    // for how a buyer wires in a real charge.
     final paid = await _paymentGateway.chargeForUpgrade(current.profile);
     if (!paid) {
       state = current; // restore — nothing changed, no partial upgrade
-      AppLogger.info('Upgrade to Premium blocked: payment not completed', tag: _tag);
+      AppLogger.info('Upgrade to Pro blocked: payment not completed', tag: _tag);
       return;
     }
 
-    await Future<void>.delayed(AppConstants.mockDelay); 
+    await Future<void>.delayed(AppConstants.mockDelay);
 
-    UserProfile updated;
+    final updated = current.profile.copyWith(planTier: 'premium');
+    await _repository.setPlanTier(current.profile.userId, 'premium');
+    await _repository.recordUpgradeEvent(
+      userId: current.profile.userId,
+      email: current.profile.email,
+      fromRole: current.profile.role,
+      toRole: current.profile.role,
+      fromTier: current.profile.planTier ?? 'free',
+      toTier: 'premium',
+      businessId: current.profile.businessId,
+    );
 
-    if (current.profile.role == 'partner') {
-      final newBusinessId = 'biz_spin_${current.profile.userId}';
-      
-      updated = current.profile.copyWith(
-        role: 'owner',
-        planTier: 'premium',
+    state = AuthAuthenticated(profile: updated, isNewOwner: current.isNewOwner);
+    AppLogger.info('Account upgraded to Pro (same business, no data loss)', tag: _tag);
+  }
+
+  /// Associate → Owner of a brand-new FREE business ("Launch Your Own
+  /// Business"). Spins the associate's own business out of the host's,
+  /// migrates their existing clients across, and drops them into
+  /// onboarding to brand the new business (isNewOwner: true).
+  ///
+  /// Associate-only. No payment — the new business starts on the free tier
+  /// and can be upgraded to Pro later via [upgradeToPremium]. Never
+  /// touches or deletes the host's business: zero data loss for anyone.
+  Future<void> launchOwnBusiness() async {
+    if (state is! AuthAuthenticated) return;
+    final current = state as AuthAuthenticated;
+    if (current.profile.role != AppConstants.rolePartner) return;
+
+    state = const AuthLoading();
+    await Future<void>.delayed(AppConstants.mockDelay);
+
+    final newBusinessId = 'biz_spin_${current.profile.userId}';
+    final updated = current.profile.copyWith(
+      role: AppConstants.roleOwner,
+      planTier: 'free',
+      businessId: newBusinessId,
+      businessName: '${current.profile.displayName} Space',
+      jobId: 'yoga_studio',
+      categoryId: null,
+    );
+
+    await _teamRepository.migratePartnerClients(current.profile.userId, newBusinessId);
+    if (DataConfig.useMockData) {
+      // Give the new business a roster row so invite/team flows work.
+      MockTeamSource().ensureOwnerRow(
+        userId: current.profile.userId,
         businessId: newBusinessId,
-        businessName: '${current.profile.displayName} Space',
-        jobId: 'yoga_studio', 
-      );
-
-      await _teamRepository.migratePartnerClients(current.profile.userId, newBusinessId);
-      AppLogger.info('SaaS Spin-Off: Migrated clients to business $newBusinessId', tag: _tag);
-    } else {
-      updated = current.profile.copyWith(
-        planTier: 'premium',
+        displayName: current.profile.businessName ?? current.profile.displayName,
+        categoryId: null,
+        email: current.profile.email,
       );
     }
+    await _repository.recordUpgradeEvent(
+      userId: current.profile.userId,
+      email: current.profile.email,
+      fromRole: current.profile.role,
+      toRole: AppConstants.roleOwner,
+      fromTier: current.profile.planTier ?? 'free',
+      toTier: 'free',
+      businessId: newBusinessId,
+    );
 
+    // isNewOwner: true → the router's redirect sends them through
+    // onboarding to brand their new free business.
     state = AuthAuthenticated(
       profile: updated,
-      isNewOwner: current.isNewOwner,
+      isNewOwner: true,
     );
-    AppLogger.info('Mock Billing: Account upgraded to Premium!', tag: _tag);
+    AppLogger.info(
+      'Associate launched a new free business: $newBusinessId',
+      tag: _tag,
+    );
   }
 
   /// Owner-only. Updates this business's feature toggles (Partnerships /

@@ -5,9 +5,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/widgets/upgrade_prompt.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
 import 'package:personal_wellness_trainer/engine/registry/widget_registry.dart';
 import 'package:personal_wellness_trainer/modules/dashboard/providers/dashboard_provider.dart';
@@ -24,11 +23,11 @@ class PartnerDashboardScreen extends ConsumerWidget {
     return DashboardBody(
       slots:      slots,
       dashLabel:  jobConfig.terminology.dashboard,
-      buildSlot:  (ctx, slot) => _buildSlot(ctx, slot, jobConfig),
+      buildSlot:  (ctx, slot) => _buildSlot(ctx, ref, slot, jobConfig),
     );
   }
 
-  Widget _buildSlot(BuildContext context, String slot, dynamic jobConfig) {
+  Widget _buildSlot(BuildContext context, WidgetRef ref, String slot, dynamic jobConfig) {
     switch (slot) {
       case 'my_earnings':
         return WidgetRegistry.build('finance.PartnerEarningsSlot', context);
@@ -40,7 +39,7 @@ class PartnerDashboardScreen extends ConsumerWidget {
           child: UpgradePrompt(
             compact: false,
             buttonLabel: jobConfig.upgrade.buttonLabel as String,
-            onUpgradeTap: () => context.pushNamed(RouteNames.ownBusiness),
+            onUpgradeTap: () => ref.read(authNotifierProvider.notifier).launchOwnBusiness(),
           ),
         );
       default:

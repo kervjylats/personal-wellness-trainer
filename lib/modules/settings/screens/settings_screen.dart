@@ -33,7 +33,7 @@ class SettingsScreen extends ConsumerWidget {
           const Text('Settings', style: AppTextStyles.headlineLarge),
           const SizedBox(height: AppSpacing.xxl),
 
-          // ── UPGRADE PROMPT (Partners only — Owners already have full access) ─
+          // ── ASSOCIATE: Launch Your Own Business (free, in-app) ───────────
           if (role.isPartner) ...[
             if (config != null)
               Padding(
@@ -42,6 +42,22 @@ class SettingsScreen extends ConsumerWidget {
                   compact: false,
                   buttonLabel: config.industry.upgrade.buttonLabel,
                   subtitle: config.industry.upgrade.subtitle,
+                  onUpgradeTap: () => _showLaunchBusinessDialog(context, ref),
+                ),
+              ),
+            const Divider(),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
+          // ── FREE OWNER: Upgrade to Pro (same business, no data loss) ─────────
+          if (role.isOwner && profile.planTier != 'premium') ...[
+            if (config != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: UpgradePrompt(
+                  compact: false,
+                  buttonLabel: 'Upgrade to Pro',
+                  subtitle: 'Unlock premium features for your business.',
                   onUpgradeTap: () => _showMockCheckoutDialog(context, ref, config),
                 ),
               ),
@@ -132,7 +148,11 @@ class SettingsScreen extends ConsumerWidget {
   void _showMockCheckoutDialog(BuildContext context, WidgetRef ref, dynamic config) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final upgradeLabel = config.industry.upgrade.buttonLabel as String;
+    // Owner-only path after the upgrade split — this dialog is the payment
+    // simulation for the Free→Pro upgrade, so it always says "Upgrade to Pro"
+    // (the associate's "Launch Your Own Business" flow is free and uses its
+    // own confirmation dialog, not billing).
+    const upgradeLabel = 'Upgrade to Pro';
 
     showDialog<void>(
       context: context,
@@ -144,12 +164,47 @@ class SettingsScreen extends ConsumerWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Subscription Active! Premium features unlocked.'),
+                content: const Text(
+                  'Upgrade to Pro complete! Premium features unlocked.',
+                ),
                 backgroundColor: theme.colorScheme.primary,
               ),
             );
           }
         },
+      ),
+    );
+  }
+
+  /// Associate-only. Launching a business is FREE in this version — it
+  /// starts a brand-new free-tier business rather than processing a
+  /// payment, so this is a lightweight confirmation instead of the owner's
+  /// mock billing dialog. The notifier flips the profile to owner and the
+  /// router's isNewOwner redirect sends them into onboarding.
+  void _showLaunchBusinessDialog(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(authNotifierProvider.notifier);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Launch Your Own Business'),
+        content: const Text(
+          'Spin off your own free business — your clients come with you, '
+          'instantly. You\'ll brand it in one short onboarding step. Your '
+          'current business is untouched.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              notifier.launchOwnBusiness();
+            },
+            child: const Text('Launch it'),
+          ),
+        ],
       ),
     );
   }

@@ -103,6 +103,66 @@ grant update (
     partners_enabled, marketplace_enabled, agreements_enabled
 ) on public.profiles to authenticated;
 
+-- ── 1b. PLAN-TIER UPGRADE (Free Owner → Pro Owner) ──────────────────────────
+-- The app's tier change (upgradeToPremium) and associate business launch
+-- (launchOwnBusiness) both need to write plan_tier — a column the RLS +
+-- column grants above intentionally make API-unwritable. This SECURITY
+-- DEFINER function is the ONLY sanctioned path; it validates the caller
+-- really is the owner of the profile row they're changing, flips the tier,
+-- and (for a launch) hands mangled ownership over rather than letting the
+-- client move itself between businesses. Returns nothing; errors throw.
+create or replace function public.set_plan_tier(
+    p_user_id uuid,
+    p_plan_tier text
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if p_plan_tier not in ('free', 'pro', 'premium') then
+        raise exception 'Invalid plan tier %', p_plan_tier;
+    end if;
+
+    -- Only the row's own owner may change their tier; everyone else (and
+    -- unauthenticated callers) gets a plain no-op error.
+    if auth.uid() <> p_user_id then
+        raise exception 'Not allowed to change this profile';
+    end if;
+
+    update public.profiles
+       set plan_tier = p_plan_tier
+     where user_id = p_user_id
+       and role = 'owner';
+end;
+$$;
+
+-- Buyer-visible audit trail of upgrades / business launches. Written by
+-- recordUpgradeEvent() after the in-app action succeeds; read by the buyer
+-- via the dashboard. Insertion is allowed for any authenticated user who
+-- the event is about (their own row only); deletion/update are admin-only.
+create table public.upgrade_events (
+    id uuid default uuid_generate_v4() primary key,
+    user_id uuid references auth.users on delete cascade not null,
+    email text,
+    from_role text not null check (from_role in ('owner', 'partner', 'staff', 'client')),
+    to_role text not null check (to_role in ('owner', 'partner', 'staff', 'client')),
+    from_tier text check (from_tier in ('free', 'pro', 'premium')),
+    to_tier text check (to_tier in ('free', 'pro', 'premium')),
+    business_id uuid,
+    created_at timestamp with time zone not null default timezone('utc'::text, now())
+);
+
+alter table public.upgrade_events enable row level security;
+
+create policy "Allow users to insert their own upgrade events"
+    on public.upgrade_events for insert
+    with check (auth.uid() = user_id);
+
+create policy "Allow users to view their own upgrade events"
+    on public.upgrade_events for select
+    using (auth.uid() = user_id);
+
 -- ── 2. AGREEMENTS TABLE ──────────────────────────────────────────────────────
 create table public.agreements (
     id uuid default uuid_generate_v4() primary key,

@@ -22,6 +22,11 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
 
   static final Map<String, UserProfile> _signedUpProfiles = {};
 
+  /// Buyer-visible audit trail of upgrades / business launches (mirrors the
+  /// real `upgrade_events` table in schema.sql). Test/debug accessor:
+  /// `MockAuthSource.upgradeEvents`.
+  static final List<Map<String, String?>> upgradeEvents = [];
+
   @override
   Future<UserProfile> signIn(String email, String password) async {
     if (email.trim().isEmpty) throw Exception('Email address is required');
@@ -252,6 +257,68 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
       await _persistProfile(updatedProfile);
       final email = updatedProfile.email;
       if (email != null) _signedUpProfiles[email] = updatedProfile;
+    }
+  }
+
+  @override
+  Future<void> setPlanTier(String userId, String planTier) async {
+    await simulateNetworkDelay(const Duration(milliseconds: 100));
+    final prefs = await SharedPreferences.getInstance();
+
+    // Look up the email that signed up as this user (setPlanTier is only
+    // relevant for accounts created through signUp(), whose profiles live
+    // under _kProfileJson(email)).
+    final email = prefs.getString(_kSignedUpEmail(userId));
+    if (email == null || email.isEmpty) return;
+
+    final existing = _signedUpProfiles[email] ?? await _loadPersistedProfile(email);
+    if (existing == null) return;
+
+    final updated = existing.copyWith(planTier: planTier);
+    _signedUpProfiles[email] = updated;
+    await _persistProfile(updated);
+
+    // Keep the shared roster row in sync so the whole business sees the
+    // tier change, mirroring updateBusinessFeatures()'s pattern.
+    if (DataConfig.useMockData) {
+      MockTeamSource().ensureOwnerRow(
+        userId: userId,
+        businessId: updated.businessId,
+        displayName: updated.businessName ?? updated.displayName,
+        categoryId: updated.selectedCategory,
+        email: updated.email,
+      );
+    }
+  }
+
+  @override
+  Future<void> recordUpgradeEvent({
+    required String userId,
+    String? email,
+    required String fromRole,
+    required String toRole,
+    String? fromTier,
+    String? toTier,
+    required String businessId,
+  }) async {
+    // Logging is best-effort and never throws — it must not block an
+    // upgrade that has already succeeded.
+    try {
+      upgradeEvents.add({
+        'user_id': userId,
+        'email': email,
+        'from_role': fromRole,
+        'to_role': toRole,
+        'from_tier': fromTier,
+        'to_tier': toTier,
+        'business_id': businessId,
+      });
+      AppLogger.info(
+        'Upgrade event logged: $fromRole(${fromTier ?? '?'}) → $toRole(${toTier ?? '?'})',
+        tag: _tag,
+      );
+    } catch (e) {
+      AppLogger.warning('Failed to log upgrade event', tag: _tag, error: e);
     }
   }
 

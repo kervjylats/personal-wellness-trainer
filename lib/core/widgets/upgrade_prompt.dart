@@ -1,6 +1,7 @@
 // lib/core/widgets/upgrade_prompt.dart
 //
-// The "Upgrade to Pro" call-to-action widget.
+// The "Launch Your Own Business" call-to-action widget (also renders the
+// Free Owner's "Upgrade to Pro" card in Settings with explicit copy).
 //
 // ⚠️ HARDCODED ENGINE RULE — THIS WIDGET IS ALWAYS SHOWN IN THE PARTNER SHELL.
 //     It cannot be hidden, disabled, or removed by any config value, owner

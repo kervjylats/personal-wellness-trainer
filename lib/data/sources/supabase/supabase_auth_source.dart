@@ -80,6 +80,45 @@ class SupabaseAuthSource implements AuthRepository {
     }).eq('user_id', userId);
   }
 
+  @override
+  Future<void> setPlanTier(String userId, String planTier) async {
+    // A user cannot update their OWN profiles row's plan_tier via the
+    // normal table API (RLS + column grants in schema.sql block it) — so
+    // tier changes go through a SECURITY DEFINER function owned by the
+    // buyer's service role. See supabase/schema.sql `set_plan_tier()`.
+    await _db.rpc('set_plan_tier', params: {
+      'p_user_id': userId,
+      'p_plan_tier': planTier,
+    });
+  }
+
+  @override
+  Future<void> recordUpgradeEvent({
+    required String userId,
+    String? email,
+    required String fromRole,
+    required String toRole,
+    String? fromTier,
+    String? toTier,
+    required String businessId,
+  }) async {
+    // Best-effort audit row. Never throws — an upgrade already in progress
+    // must not be rolled back because the audit write failed.
+    try {
+      await _db.from('upgrade_events').insert({
+        'user_id': userId,
+        'email': email,
+        'from_role': fromRole,
+        'to_role': toRole,
+        'from_tier': fromTier,
+        'to_tier': toTier,
+        'business_id': businessId,
+      });
+    } catch (_) {
+      // Ignored — see comment above.
+    }
+  }
+
   Future<UserProfile> _fetchProfile(String userId) async {
     final data = await _db
         .from('profiles')

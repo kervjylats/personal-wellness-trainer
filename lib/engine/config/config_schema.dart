@@ -390,8 +390,9 @@ class ConfigUpgrade {
     required this.subtitle,
   });
 
-  /// The upgrade prompt is always shown in the partner shell regardless
-  /// of this flag. This flag only controls extra placements.
+  /// The Launch Your Own Business prompt is always shown in the partner
+  /// shell regardless of this flag. This flag only controls extra
+  /// placements.
   final bool enabled;
   final String url;
   final String buttonLabel;
@@ -401,9 +402,9 @@ class ConfigUpgrade {
     return ConfigUpgrade(
       enabled:     json['enabled'] as bool? ?? true,
       url:         json['url'] as String? ?? '',
-      buttonLabel: json['button_label'] as String? ?? 'Upgrade to Pro',
+      buttonLabel: json['button_label'] as String? ?? 'Launch Your Own Business',
       subtitle:    json['subtitle'] as String?
-                     ?? 'Get your own platform with full owner access',
+                     ?? 'Start your own free business — your clients come with you',
     );
   }
 }

@@ -6,7 +6,9 @@
 // Dashboard wired: Phase 6.
 //
 // ⚠️ HARDCODED RULES — never removable:
-//   1. Upgrade to Pro prompt always visible.
+//   1. Launch Your Own Business prompt always visible (an Associate can
+//      spin off their own free business from any tab; it's irreversible
+//      once confirmed).
 //   2. Locked features visible but grayed, never hidden.
 //   3. Owner Control Panel: never shown.
 //   4. Full Finance: never shown.
@@ -228,9 +230,10 @@ class _PartnerShellState extends ConsumerState<PartnerShell> {
   }
 
   void _handleUpgradeTap() {
-    // Navigate to the buyer's contact page (OwnBusinessScreen) so the
-    // partner can request to be upgraded to an owner account.
-    context.pushNamed(RouteNames.ownBusiness);
+    // Associate → Owner in-app: launch the associate's own FREE business
+    // (clients migrate across, then onboarding brands it). No contact form,
+    // no payment — launching a business is free in this version.
+    ref.read(authNotifierProvider.notifier).launchOwnBusiness();
   }
 }
 
