@@ -59,7 +59,7 @@ class _InviteDialogState extends ConsumerState<InviteDialog> {
   @override
   Widget build(BuildContext context) {
     final roleLabel = switch (widget.role) {
-      'partner' => 'Partner',
+      'partner' => 'Associate',
       'staff'   => 'Staff Member',
       _         => 'Client',
     };

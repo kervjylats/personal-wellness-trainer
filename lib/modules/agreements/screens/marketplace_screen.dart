@@ -45,7 +45,7 @@ class MarketplaceScreen extends ConsumerWidget {
     });
 
     final config = ref.watch(configProvider).valueOrNull;
-    final partnerTerm = config?.industry.terminology.partner ?? 'Partner';
+    final partnerTerm = config?.industry.terminology.partner ?? 'Associate';
 
     // Defensive re-check: nav already hides the entry point to this screen
     // when Partners/Marketplace are off, but a stale deep link or a flag
@@ -58,7 +58,7 @@ class MarketplaceScreen extends ConsumerWidget {
         body: const AppEmptyState(
           icon: Icons.travel_explore_outlined,
           headline: 'Marketplace is turned off',
-          subtext: 'This business has the Partnership Marketplace disabled.',
+          subtext: 'This business has the Collab Marketplace disabled.',
         ),
       );
     }
@@ -111,7 +111,7 @@ class _MarketplaceBody extends ConsumerWidget {
               if (marketplaceState.openCategories.isNotEmpty) ...[
                 _SectionHeader(
                   icon: Icons.search_outlined,
-                  title: 'Discover Partners',
+                  title: 'Discover Associates',
                   count: marketplaceState.listings.length,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -310,7 +310,7 @@ class _EmptyDiscovery extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'No compatible partners found.',
+              'No compatible associates found.',
               style: AppTextStyles.bodyMedium
                   .copyWith(color: AppColors.grey600),
             ),
@@ -451,7 +451,7 @@ class _ReceivedRequestTile extends ConsumerWidget {
       SnackBar(
         content: Text(
           ok
-              ? 'Partnership with ${accepted.senderBusinessName} is active. '
+              ? 'Collab with ${accepted.senderBusinessName} is active. '
                   'They\'ll confirm their own rate from their side.'
               : 'Accepted, but finalizing the agreement failed — you can '
                   'set it up from your Agreements list instead.',
@@ -555,7 +555,7 @@ class _ConfigureCommissionDialogState
             final partner = double.tryParse(_partnerCtrl.text) ?? 0;
             Navigator.of(context).pop((owner, partner));
           },
-          child: const Text('Confirm partnership'),
+          child: const Text('Confirm Collab'),
         ),
       ],
     );

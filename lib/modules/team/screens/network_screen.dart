@@ -35,7 +35,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen>
   late TabController _tabController;
 
   static const List<_TabDef> _tabs = [
-    _TabDef(label: 'Partners', role: 'partner', icon: Icons.handshake_outlined),
+    _TabDef(label: 'Associates', role: 'partner', icon: Icons.handshake_outlined),
     _TabDef(label: 'Staff',    role: 'staff',   icon: Icons.badge_outlined),
     _TabDef(label: 'Clients',  role: 'client',  icon: Icons.person_outline),
   ];
@@ -154,8 +154,8 @@ class _MemberTab extends ConsumerWidget {
         if (role == 'partner' && !features.partnersEnabled) {
           return const AppEmptyState(
             icon: Icons.handshake_outlined,
-            headline: 'Partnerships are turned off',
-            subtext: 'This business has the Partnership system disabled.',
+            headline: 'Collabs are turned off',
+            subtext: 'This business has the Collab system disabled.',
           );
         }
 
@@ -234,14 +234,14 @@ class _DiscoverPartnersBanner extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Discover new partners',
+                        'Discover new associates',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        'Browse other businesses and request a partnership.',
+                        'Browse other businesses and request a collab.',
                         style: AppTextStyles.labelSmall
                             .copyWith(color: colorScheme.onPrimaryContainer),
                       ),
@@ -297,7 +297,7 @@ class _ProposeDealBanner extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Set a commission split with one of your partners.',
+                        'Set a commission split with one of your associates.',
                         style: AppTextStyles.labelSmall
                             .copyWith(color: colorScheme.onSecondaryContainer),
                       ),
@@ -413,7 +413,7 @@ class _EmptyTab extends StatelessWidget {
   }
 
   static (IconData, String) _tabConfig(String role) => switch (role) {
-        'partner' => (Icons.handshake_outlined, 'No partners yet'),
+        'partner' => (Icons.handshake_outlined, 'No associates yet'),
         'staff'   => (Icons.badge_outlined,     'No staff members yet'),
         _         => (Icons.person_outline,     'No clients yet'),
       };

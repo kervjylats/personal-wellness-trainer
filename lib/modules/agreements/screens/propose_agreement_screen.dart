@@ -162,17 +162,17 @@ class _ProposeAgreementScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Partner', style: AppTextStyles.labelMedium),
+        const Text('Associate', style: AppTextStyles.labelMedium),
         const SizedBox(height: AppSpacing.xs),
         if (partnersAsync.isLoading)
           const LinearProgressIndicator()
         else if (partners.isEmpty)
-          Text('No active partners found. Invite a partner first.',
+          Text('No active associates found. Invite an associate first.',
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey600))
         else
           DropdownButtonFormField<String>(
             initialValue: _selectedPartnerId,
-            decoration: const InputDecoration(labelText: 'Select partner'),
+            decoration: const InputDecoration(labelText: 'Select associate'),
             items: partners.map((p) => DropdownMenuItem<String>(
               value: p.userId,
               child: Text('${p.displayName} (${p.categoryId ?? 'no category'})'),
@@ -208,7 +208,7 @@ class _ProposeAgreementScreenState
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Partner: ${_partnerPct.round()}%', style: AppTextStyles.bodyMedium),
+                Text('Associate: ${_partnerPct.round()}%', style: AppTextStyles.bodyMedium),
                 Slider(
                   value: _partnerPct, min: 0, max: 100, divisions: 20,
                   onChanged: (v) => setState(() { _partnerPct = v; _ownerPct = 100 - v; }),

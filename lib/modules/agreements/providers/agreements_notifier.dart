@@ -89,7 +89,7 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
     final authForGate = ref.read(authNotifierProvider);
     if (authForGate is! AuthAuthenticated || authForGate.profile.role != 'owner') {
       ref.read(agreementActionErrorProvider.notifier).state =
-          'Only Owners can propose a new agreement. Partners can discuss, '
+          'Only Owners can propose a new agreement. Associates can discuss, '
           'accept, or decline agreements already proposed to them.';
       return null;
     }
@@ -102,7 +102,7 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
     );
     if (!compatible) {
       ref.read(agreementActionErrorProvider.notifier).state =
-          'These two categories are not compatible for a partnership agreement. '
+          'These two categories are not compatible for a Collab. '
           'Check the compatibility settings in your configuration.';
       return null;
     }
@@ -272,7 +272,7 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
       AppLogger.error('createMutualAgreementFromRequest failed',
           tag: _tag, error: e, stackTrace: st);
       ref.read(agreementActionErrorProvider.notifier).state =
-          'Could not finalize the partnership. Please try again.';
+          'Could not finalize the Collab. Please try again.';
       state = prevState;
       return false;
     }

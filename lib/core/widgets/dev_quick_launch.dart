@@ -123,7 +123,7 @@ class _DevLaunchSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'See Owner / Partner / Staff / Client side by side — add '
+              'See Owner / Associate / Staff / Client side by side — add '
               'something in one panel, watch it appear in the others.',
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
@@ -170,9 +170,9 @@ class _DevLaunchSheet extends ConsumerWidget {
                 // that captures parentRef — never its own ConsumerWidget ref,
                 // which could be invalidated after the sheet closes.
                 _RoleChip(
-                  role: 'partner', label: 'Partner', icon: Icons.handshake_outlined,
+                  role: 'partner', label: 'Associate', icon: Icons.handshake_outlined,
                   onSignIn: () => parentRef.read(authNotifierProvider.notifier)
-                      .devQuickSignIn(jobId: 'partner', jobLabel: 'Partner'),
+                      .devQuickSignIn(jobId: 'partner', jobLabel: 'Associate'),
                 ),
                 _RoleChip(
                   role: 'staff', label: 'Staff', icon: Icons.badge_outlined,

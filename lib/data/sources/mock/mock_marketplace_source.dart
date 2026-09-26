@@ -244,7 +244,7 @@ class MockMarketplaceSource with MockSourceMixin implements MarketplaceRepositor
         receiverCategoryId: 'yoga_studio',
         status: 'pending',
         createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-        message: 'Hi — we think a partnership would be fantastic!',
+        message: 'Hi — we think a Collab would be fantastic!',
       ),
     ];
   }

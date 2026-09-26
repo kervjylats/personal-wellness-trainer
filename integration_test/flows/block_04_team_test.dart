@@ -14,15 +14,15 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
       await r.devSignInAsJob('yoga_studio');
       await r.tapText('Network');
       await r.wait();
-      final ok = r.existsText('Partners') && r.existsText('Staff') &&
+      final ok = r.existsText('Associates') && r.existsText('Staff') &&
           r.existsText('Clients') && r.existsText('Chats');
       rec('04_01 Network has 4 tabs', ok,
-          ok ? null : 'Missing tab — found: ${['Partners','Staff','Clients','Chats'].where((x) => r.existsText(x)).join(",")}');
+          ok ? null : 'Missing tab — found: ${['Associates','Staff','Clients','Chats'].where((x) => r.existsText(x)).join(",")}');
       await r.signOut();
     } catch (e) { rec('04_01 Network has 4 tabs', false, '$e'); }
   });
 
-  for (final tab in ['Partners','Staff','Clients']) {
+  for (final tab in ['Associates','Staff','Clients']) {
     testWidgets('04_02_$tab — $tab tab shows empty state or members', (t) async {
       try {
         app.main(); await t.pumpAndSettle(const Duration(seconds: 3));
@@ -48,7 +48,7 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
       await r.devSignInAsJob('yoga_studio');
       await r.tapText('Network');
       await r.wait();
-      await r.tapTab('Partners');
+      await r.tapTab('Associates');
       await r.wait();
       await r.tapFab();
       await r.wait();

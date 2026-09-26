@@ -86,7 +86,7 @@ class SettingsScreen extends ConsumerWidget {
             _SettingsTile(
               icon: Icons.tune_outlined,
               title: 'Business Features',
-              subtitle: 'Turn Partnerships, Marketplace, and Deals on or off',
+              subtitle: 'Turn Collabs, Marketplace, and Deals on or off',
               onTap: () => context.goNamed(RouteNames.ownerBusinessFeatures),
               isLocked: false,
             ),

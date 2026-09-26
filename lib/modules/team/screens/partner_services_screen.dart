@@ -55,7 +55,7 @@ class _PartnersSection extends StatelessWidget {
         if (partners.isEmpty) {
           return const _EmptyMessage(
             icon: Icons.people_outline,
-            title: 'No partners yet',
+            title: 'No associates yet',
             subtitle: 'Check back later!',
           );
         }
@@ -63,7 +63,7 @@ class _PartnersSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Our Partners (${partners.length})',
+              'Our Associates (${partners.length})',
               style: AppTextStyles.headlineSmall,
             ),
             const SizedBox(height: AppSpacing.sm),

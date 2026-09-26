@@ -74,7 +74,7 @@ class ClientNetworkScreen extends ConsumerWidget {
                 ...owners.map((m) => _ContactTile(member: m)),
               ],
               if (partners.isNotEmpty) ...[
-                _SectionLabel(label: 'Partners', count: partners.length),
+                _SectionLabel(label: 'Associates', count: partners.length),
                 ...partners.map((m) => _ContactTile(member: m)),
               ],
               if (visibleStaff.isNotEmpty) ...[
@@ -187,7 +187,7 @@ class _ContactTile extends ConsumerWidget {
 
   String _roleLabel(String role) => switch (role) {
         'owner'   => 'Owner',
-        'partner' => 'Partner',
+        'partner' => 'Associate',
         'staff'   => 'Staff',
         _         => role,
       };

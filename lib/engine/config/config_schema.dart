@@ -158,7 +158,7 @@ class ConfigTerminology {
   factory ConfigTerminology.fromJson(Map<String, dynamic> json) {
     return ConfigTerminology(
       owner:      json['owner'] as String? ?? 'Owner',
-      partner:    json['partner'] as String? ?? 'Partner',
+      partner:    json['partner'] as String? ?? 'Associate',
       staff:      json['staff'] as String? ?? 'Staff',
       client:     json['client'] as String? ?? 'Client',
       activity:   json['activity'] as String? ?? 'Activity',

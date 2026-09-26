@@ -40,16 +40,16 @@ class BusinessFeaturesScreen extends ConsumerWidget {
         children: [
           const SizedBox(height: AppSpacing.sm),
           const Text(
-            'Turn parts of the Partnership system on or off for this '
+            'Turn parts of the Collab system on or off for this '
             'business. Changes apply immediately for everyone.',
             style: AppTextStyles.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.xl),
           _FeatureSwitchTile(
             icon: Icons.handshake_outlined,
-            title: 'Partners',
-            subtitle: 'Allow this business to invite and work with Partners '
-                'at all. Turning this off hides the Partners tab entirely — '
+            title: 'Collabs',
+            subtitle: 'Allow this business to invite and work with Associates '
+                'at all. Turning this off hides the Associates tab entirely — '
                 'Owner, Staff, and Clients still work as normal.',
             value: features.partnersEnabled,
             onChanged: (v) => notifier.updateBusinessFeatures(
@@ -59,10 +59,10 @@ class BusinessFeaturesScreen extends ConsumerWidget {
           const Divider(height: AppSpacing.xl),
           _FeatureSwitchTile(
             icon: Icons.travel_explore_outlined,
-            title: 'Marketplace (Discoverable Partnerships)',
-            subtitle: 'Let Pro Partners discover and partner with other '
+            title: 'Marketplace (Discoverable Collabs)',
+            subtitle: 'Let Pro Associates discover and collab with other '
                 'independent businesses on the platform, separate from '
-                'partners this business invited directly.',
+                'associates this business invited directly.',
             value: features.partnersEnabled && features.marketplaceEnabled,
             onChanged: features.partnersEnabled
                 ? (v) => notifier.updateBusinessFeatures(
@@ -75,7 +75,7 @@ class BusinessFeaturesScreen extends ConsumerWidget {
             icon: Icons.receipt_long_outlined,
             title: 'Agreements & Deals',
             subtitle: 'Allow commission-split deals to be proposed between '
-                'this Owner and their Partners.',
+                'this Owner and their Associates.',
             value: features.partnersEnabled && features.agreementsEnabled,
             onChanged: features.partnersEnabled
                 ? (v) => notifier.updateBusinessFeatures(

@@ -239,7 +239,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     return ListView(children: [
       if (_partners.isNotEmpty)
         _RoleSection(
-          title: 'Partners', icon: Icons.handshake_outlined, color: colorScheme.primary,
+          title: 'Associates', icon: Icons.handshake_outlined, color: colorScheme.primary,
           members: _partners, selectedIds: _selectedIds, isExpanded: _partnersExpanded,
           onToggleExpanded: () => setState(() => _partnersExpanded = !_partnersExpanded),
           onToggleMember: _toggleMember,

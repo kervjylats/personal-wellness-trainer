@@ -139,7 +139,7 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
         amount: item.price,
         currencySymbol: item.currency,
         type: 'payment',
-        description: 'Sold "${item.title}" via partner referral',
+        description: 'Sold "${item.title}" via associate referral',
         fromUserId: auth.profile.userId,
         fromUserName: auth.profile.displayName,
         toUserId: agreement.partnerUserId,

@@ -32,7 +32,7 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
       if (hasListings) {
         await r.tapFirst(find.byType(Card));
         await r.wait();
-        final sheetOpen = r.existsText('Partnership') || r.existsText('Request') ||
+        final sheetOpen = r.existsText('Collab') || r.existsText('Request') ||
             r.existsText('Category') || r.existsText('Cancel');
         rec('06_02 Listing profile card opens', sheetOpen,
             sheetOpen ? null : 'Profile card bottom sheet did not open');

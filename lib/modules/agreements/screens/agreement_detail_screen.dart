@@ -37,7 +37,7 @@ class AgreementDetailScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             _InfoRow(label: 'Category', value: live.categoryId),
             _InfoRow(label: 'Your commission',     value: AppFormatters.percentage(live.ownerCommissionPct)),
-            _InfoRow(label: 'Partner commission',  value: AppFormatters.percentage(live.partnerCommissionPct)),
+            _InfoRow(label: 'Associate commission', value: AppFormatters.percentage(live.partnerCommissionPct)),
             _InfoRow(label: 'Proposed',            value: AppFormatters.date(live.proposedAt)),
             if (live.respondedAt != null)
               _InfoRow(label: 'Responded', value: AppFormatters.date(live.respondedAt!)),

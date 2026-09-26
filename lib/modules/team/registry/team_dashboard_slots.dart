@@ -92,7 +92,7 @@ class OwnerTeamCountSlot extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     DashboardCountChip(
-                        count: partners, label: term?.partner ?? 'Partners'),
+                        count: partners, label: term?.partner ?? 'Associates'),
                     DashboardCountChip(count: staff, label: term?.staff ?? 'Staff'),
                     DashboardCountChip(count: clients, label: term?.client ?? 'Clients'),
                   ],

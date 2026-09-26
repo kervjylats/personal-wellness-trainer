@@ -72,7 +72,7 @@ class AvailabilityCard extends ConsumerWidget {
             if (toggleableCategories.isNotEmpty) ...[
               const Divider(height: AppSpacing.lg),
               Text(
-                'Partnership Slots',
+                'Collab Slots',
                 style: AppTextStyles.labelMedium
                     .copyWith(color: AppColors.grey600),
               ),
@@ -85,7 +85,7 @@ class AvailabilityCard extends ConsumerWidget {
 
                 String? lockReason;
                 if (lockedByAgreement) {
-                  lockReason = 'Already partnered in this category';
+                  lockReason = 'Already in a Collab in this category';
                 } else if (disabled) {
                   lockReason = 'Enable "Discoverable" first';
                 }
@@ -95,8 +95,8 @@ class AvailabilityCard extends ConsumerWidget {
                   subtitle: lockedByAgreement
                       ? 'Active agreement — slot is filled'
                       : isOpen
-                          ? 'Open to partnership requests'
-                          : 'Not currently seeking a partner',
+                          ? 'Open to Collab requests'
+                          : 'Not currently seeking an associate',
                   value: isOpen,
                   locked: lockedByAgreement || disabled,
                   lockReason: lockReason,

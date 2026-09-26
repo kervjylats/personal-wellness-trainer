@@ -79,7 +79,7 @@ final partnerOffersProvider = FutureProvider.autoDispose<List<PartnerOffer>>(
       );
       offers.add(PartnerOffer(
         agreement: agreement,
-        partnerBusinessName: listing?.businessName ?? 'Partner business',
+        partnerBusinessName: listing?.businessName ?? 'Associate business',
         items: matching,
       ));
     }

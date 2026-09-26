@@ -111,7 +111,7 @@ class MockInviteSource with MockSourceMixin implements InviteRepository {
         expiresAt: now.add(const Duration(days: 14)),
         useCount: 0,
         maxUses: 1,
-        label: 'Cat 1 partner slot',
+        label: 'Cat 1 associate slot',
       ),
     ];
   }

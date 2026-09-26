@@ -71,7 +71,7 @@ abstract final class MockProfiles {
     userId: _partnerUserId,
     businessId: _businessId,
     role: AppConstants.rolePartner,
-    displayName: 'Jordan Partner',
+    displayName: 'Jordan Associate',
     email: 'partner@test.com',
     phone: '+1 555 000 0002',
     joinedAt: DateTime(2024, 3, 10),

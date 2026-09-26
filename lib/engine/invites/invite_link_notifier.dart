@@ -65,7 +65,7 @@ class InviteLinkNotifier extends AutoDisposeAsyncNotifier<List<InviteLinkModel>>
     final profile = authState.profile;
 
     if (profile.role == 'partner' && targetRole == 'staff') {
-      return InviteLinkError('Partners cannot invite staff members.');
+      return InviteLinkError('Associates cannot invite staff members.');
     }
 
     try {

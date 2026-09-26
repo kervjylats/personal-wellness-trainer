@@ -30,21 +30,22 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
     } catch (e) { rec('08_02 Partner upgrade prompt visible', false, '$e'); }
   });
 
-  testWidgets('08_03 — Partner network has no Partners tab', (t) async {
+  testWidgets('08_03 — Partner network has no Associates tab', (t) async {
     try {
       app.main(); await t.pumpAndSettle(const Duration(seconds: 3));
       final r = AppRobot(t);
       await r.devSignInAsRole('partner');
       await r.tapText('Network');
       await r.wait();
-      // Partners should NOT see a "Partners" tab — they see their one
-      // Owner (as a small info card, not a tab) plus their own Clients
-      // list underneath it. No Staff tab either — that stays Owner-side.
-      final hasPartnersTab = r.existsText('Partners');
-      rec('08_03 Partner no Partners tab', !hasPartnersTab,
-          !hasPartnersTab ? null : 'Partners tab should not be visible for partner role');
+      // Partners should NOT see an "Associates"/"Partners" tab — they see
+      // their one Owner (as a small info card, not a tab) plus their own
+      // Clients list underneath it. No Staff tab either — that stays
+      // Owner-side.
+      final hasPartnersTab = r.existsText('Associates');
+      rec('08_03 Partner no Associates tab', !hasPartnersTab,
+          !hasPartnersTab ? null : 'Associates tab should not be visible for partner role');
       await r.signOut();
-    } catch (e) { rec('08_03 Partner no Partners tab', false, '$e'); }
+    } catch (e) { rec('08_03 Partner no Associates tab', false, '$e'); }
   });
 
   testWidgets('08_04 — Partner finance shows own earnings only', (t) async {

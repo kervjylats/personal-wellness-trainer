@@ -60,7 +60,7 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
                 iconColor: colorScheme.primary,
                 title: upgradeLabel,
                 subtitle:
-                    'Launch your own platform. Invite unlimited partners '
+                    'Launch your own platform. Invite unlimited associates '
                     'in any category — including $categoryLabel.',
                 child: PrimaryButton(
                   label: upgradeLabel,
@@ -74,7 +74,7 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
                 title: 'Invite as client instead',
                 subtitle:
                     'They join this platform as a client and can use '
-                    'services here, but not operate as a partner.',
+                    'services here, but not operate as an associate.',
                 child: PrimaryButton(
                   label: 'Generate Client Invite Link',
                   isLoading: _generatingClientLink,
@@ -193,8 +193,8 @@ class _ConflictHeader extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'This platform already has a partner in the $categoryLabel '
-          'category. Only one partner per category is allowed per platform.',
+          'This platform already has an associate in the $categoryLabel '
+          'category. Only one associate per category is allowed per platform.',
           style: AppTextStyles.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),

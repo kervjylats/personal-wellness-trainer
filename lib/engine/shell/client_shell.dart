@@ -56,7 +56,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
         final visibleTabs = [
           const _ClientTab(id: 'dashboard', icon: Icons.home_outlined, label: 'Home'),
           _ClientTab(id: 'activity', icon: Icons.event_note_outlined, label: jobConfig.terminology.activities),
-          const _ClientTab(id: 'discover', icon: Icons.explore_outlined, label: 'Partners'),
+          const _ClientTab(id: 'discover', icon: Icons.explore_outlined, label: 'Associates'),
           const _ClientTab(id: 'finance', icon: Icons.payments_outlined, label: 'Payments'), // ◄ Fixed: Hardcoded to Payments!
           const _ClientTab(id: 'settings', icon: Icons.settings_outlined, label: 'Settings'),
         ];

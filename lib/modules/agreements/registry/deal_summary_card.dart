@@ -27,7 +27,7 @@ class DealSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final partnerName        = data?['partnerName']          as String? ?? 'Partner';
+    final partnerName        = data?['partnerName']          as String? ?? 'Associate';
     final ownerPct           = data?['ownerCommissionPct']   as double? ?? 0.0;
     final partnerPct         = data?['partnerCommissionPct'] as double? ?? 0.0;
     final status             = data?['status']               as String? ?? 'pending';
@@ -67,7 +67,7 @@ class DealSummaryCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xs),
                 if (partnerPct > 0)
                   _CommissionChip(
-                    label: 'Partner: ${partnerPct.toStringAsFixed(1)}%',
+                    label: 'Associate: ${partnerPct.toStringAsFixed(1)}%',
                   ),
                 if (ownerPct == 0 && partnerPct == 0)
                   Text(

@@ -24,7 +24,7 @@ void runTests(Recorder rec, List<Map<String,String>> failures) {
       await r.devSignInAsJob('yoga_studio');
       await r.tapText('Network');
       await r.wait();
-      final ok = r.existsText('Partners') || r.existsText('Staff') || r.existsText('Clients');
+      final ok = r.existsText('Associates') || r.existsText('Staff') || r.existsText('Clients');
       rec('02_02 Network tab loads', ok, ok ? null : 'Network tab content not found');
       await r.signOut();
     } catch (e) { rec('02_02 Network tab loads', false, '$e'); }

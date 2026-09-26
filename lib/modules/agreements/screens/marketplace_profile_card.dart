@@ -134,7 +134,7 @@ class _MarketplaceProfileCardState extends ConsumerState<MarketplaceProfileCard>
   }) _deriveViewData() {
     final config      = ref.watch(configProvider).valueOrNull;
     final categories  = config?.industry.categories ?? [];
-    final partnerTerm = config?.industry.terminology.partner ?? 'Partner';
+    final partnerTerm = config?.industry.terminology.partner ?? 'Associate';
     final mpConfig    = config?.industry.partnershipMarketplace;
 
     final openCategoryItems = widget.listing.openCategories.map((catId) {
@@ -275,7 +275,7 @@ class _CategorySlots extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Open Partnership Slots',
+        Text('Open Collab Slots',
             style: AppTextStyles.titleSmall.copyWith(color: colorScheme.onSurface)),
         const SizedBox(height: AppSpacing.sm),
         if (openCategoryItems.isEmpty)
