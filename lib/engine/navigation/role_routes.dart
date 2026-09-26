@@ -14,7 +14,6 @@ import 'package:personal_wellness_trainer/engine/auth/accept_invitation_screen.d
 import 'package:personal_wellness_trainer/engine/auth/auth_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/forgot_password_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/onboarding_screen.dart';
-import 'package:personal_wellness_trainer/engine/auth/signup_screen.dart';
 import 'package:personal_wellness_trainer/engine/shell/client_shell.dart';
 import 'package:personal_wellness_trainer/engine/shell/owner_shell.dart';
 import 'package:personal_wellness_trainer/engine/shell/partner_shell.dart';
@@ -421,11 +420,6 @@ List<RouteBase> authFlowRoutes() => [
     path: RouteNames.loginPath,
     name: RouteNames.login,
     builder: (_, __) => const AuthScreen(),
-  ),
-  GoRoute(
-    path: RouteNames.signupPath,
-    name: RouteNames.signup,
-    builder: (_, __) => const SignupScreen(),
   ),
   GoRoute(
     path: '/forgot-password',

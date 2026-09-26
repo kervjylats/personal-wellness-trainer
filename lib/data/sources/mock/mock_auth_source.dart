@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_wellness_trainer/core/constants/app_constants.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/user_profile.dart';
+import 'package:personal_wellness_trainer/data/sources/mock/mock_invite_source.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_profiles.dart';
+import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_repository.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_source_mixin.dart';
@@ -67,12 +69,16 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     return profile;
   }
 
-  // A handful of fixed demo activation keys so the marketing landing
-  // page's key-redemption path has something real to try in mock mode
-  // too — mirrors real mode's activation_keys table, just in-memory.
-  // Real mode's mock-mode-equivalent invite acceptance (Partner/Staff/
-  // Client) already works via TeamRepository.inviteMember() directly, a
-  // separate path from this one — this only fills the activation-key gap.
+// Redemption-code resolution mirrors real mode's handle_new_user()
+  // trigger (triggers.sql), which tries these in order:
+  //   1. Invite-link token (wlp_...)  → join an EXISTING business as a
+  //      Partner/Staff/Client (role comes from the link, not the client).
+  //   2. Activation key (e.g. DEMO-YOGA-001) → spin up a BRAND NEW Pro
+  //      Owner business (bought from the buyer/dev).
+  //   3. Blank code → plain free sign-up → a BRAND NEW Free Owner.
+  // The demo activation keys below are the mock-mode mirror of real
+  // mode's activation_keys table (in-memory, for the landing page's
+  // key-redemption path to have something real to try).
   static final Map<String, Map<String, String>> _demoActivationKeys = {
     'DEMO-YOGA-001': {'jobId': 'yoga_studio', 'businessName': 'Sunrise Yoga', 'primaryColor': '#2471A3'},
     'DEMO-NUTRITION-001': {'jobId': 'nutritionist', 'businessName': 'Fresh Start Nutrition', 'primaryColor': '#2E8B57'},
@@ -112,31 +118,67 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     }
 
     final userId = 'usr_owner_signup_${DateTime.now().millisecondsSinceEpoch}';
-    UserProfile profile;
+    final code = (redemptionCode == null || redemptionCode.trim().isEmpty)
+        ? null
+        : redemptionCode.trim();
 
-    if (redemptionCode != null && _demoActivationKeys.containsKey(redemptionCode)) {
-      if (_redeemedDemoKeys.contains(redemptionCode)) {
-        throw Exception('This activation key has already been used');
+    UserProfile profile;
+    if (code != null) {
+      // Case 1: invite-link token into an existing business.
+      final inviteRepo = MockInviteSource();
+      final link = await inviteRepo.getLinkByToken(code);
+      final linkUsable = link != null && !link.isExpired && !link.isExhausted;
+      if (linkUsable) {
+        final member = await MockTeamSource().inviteMember(
+              businessId: link.businessId,
+              invitedByUserId: link.invitedByUserId,
+              role: link.targetRole,
+              displayName: displayName.trim(),
+              email: trimmedEmail,
+              categoryId: link.categoryId,
+            );
+        profile = UserProfile(
+          userId: member.userId,
+          businessId: member.businessId,
+          role: member.role,
+          displayName: member.displayName,
+          joinedAt: member.joinedAt,
+          isActive: member.isActive,
+          email: member.email,
+          categoryId: member.categoryId,
+          primaryPartnerId: member.primaryPartnerId,
+          featureToggles: member.featureToggles,
+        );
+        await inviteRepo.recordUse(link.id);
+      } else if (_demoActivationKeys.containsKey(code)) {
+        if (_redeemedDemoKeys.contains(code)) {
+          throw Exception('This activation key has already been used');
+        }
+        final key = _demoActivationKeys[code]!;
+        profile = UserProfile(
+          userId: userId,
+          businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',
+          role: AppConstants.roleOwner,
+          displayName: displayName.trim(),
+          email: trimmedEmail,
+          joinedAt: DateTime.now(),
+          isActive: true,
+          businessName: key['businessName'],
+          primaryColor: key['primaryColor'],
+          jobId: key['jobId'],
+          selectedCategory: key['jobId'],
+          planTier: 'premium',
+        );
+        _redeemedDemoKeys.add(code);
+      } else {
+        throw Exception(
+          code.startsWith('wlp_')
+              ? 'This invite link is invalid or has already been used.'
+              : 'Invalid or already-used activation key',
+        );
       }
-      final key = _demoActivationKeys[redemptionCode]!;
-      profile = UserProfile(
-        userId: userId,
-        businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',
-        role: AppConstants.roleOwner,
-        displayName: displayName.trim(),
-        email: trimmedEmail,
-        joinedAt: DateTime.now(),
-        isActive: true,
-        businessName: key['businessName'],
-        primaryColor: key['primaryColor'],
-        jobId: key['jobId'],
-        selectedCategory: key['jobId'],
-        planTier: 'premium',
-      );
-      _redeemedDemoKeys.add(redemptionCode);
-    } else if (redemptionCode != null) {
-      throw Exception('Invalid or already-used activation key');
     } else {
+      // Case 3: no code → a brand-new Free Owner.
       profile = UserProfile(
         userId: userId,
         businessId: 'biz_${DateTime.now().millisecondsSinceEpoch}',

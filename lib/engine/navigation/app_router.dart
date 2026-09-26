@@ -18,7 +18,6 @@ import 'package:personal_wellness_trainer/engine/auth/auth_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/auth/forgot_password_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/onboarding_screen.dart';
-import 'package:personal_wellness_trainer/engine/auth/signup_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/marketing_landing_screen.dart';
 import 'package:personal_wellness_trainer/engine/navigation/role_routes.dart';
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
@@ -49,11 +48,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.loginPath,
         name: RouteNames.login,
         builder: (_, __) => const AuthScreen(),
-      ),
-      GoRoute(
-        path: RouteNames.signupPath,
-        name: RouteNames.signup,
-        builder: (_, __) => const SignupScreen(),
       ),
       GoRoute(
         path: RouteNames.marketingLandingPath,
@@ -123,14 +117,16 @@ class _RouterNotifier extends ChangeNotifier {
 
       case AuthUnauthenticated():
         if (location == RouteNames.loginPath ||
-            location == RouteNames.signupPath ||
             location == RouteNames.onboardingPath ||
             location == '/forgot-password' ||
             location == RouteNames.acceptInvitationPath ||
             location == RouteNames.marketingLandingPath) {
           return null;
         }
-        return RouteNames.loginPath;
+        // Front door: logged-out visitors land on the buyer's marketing
+        // landing page (/get-started), not the login form. Sign-in remains
+        // reachable via the "Sign in" link on that page.
+        return RouteNames.marketingLandingPath;
 
       case AuthAuthenticated(:final profile, :final isNewOwner):
         if (isNewOwner) {
@@ -148,10 +144,10 @@ class _RouterNotifier extends ChangeNotifier {
         if (location == RouteNames.loginPath ||
             location == RouteNames.loadingPath ||
             location == RouteNames.rootPath ||
-            location == RouteNames.signupPath ||
             location == RouteNames.onboardingPath ||
             location == '/forgot-password' ||
-            location == RouteNames.acceptInvitationPath) {
+            location == RouteNames.acceptInvitationPath ||
+            location == RouteNames.marketingLandingPath) {
           return targetPath;
         }
 

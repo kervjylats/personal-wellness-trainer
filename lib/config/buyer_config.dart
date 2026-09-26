@@ -70,23 +70,27 @@ abstract final class BuyerConfig {
 
   // ── Marketing Landing Page ──
   // This is the ONE page a QR code, a shared personal link, or a social
-  // media post should point to — it's built to work for two different
-  // kinds of visitor at once, so you only ever need to share one URL:
-  //   - Someone who doesn't have a code yet sees the pitch below and taps
-  //     Contact to reach you directly (however you set contactUrl —
+  // media post should point to — it's the single front door to the app
+  // (unauthenticated users at the app's root land here). It serves three
+  // kinds of visitor from the same form:
+  //   - Someone without a code types their name/email/password and taps
+  //     "Get started" → a brand-new FREE Owner account.
+  //   - Someone with an activation key (already sold to them, outside the
+  //     app) enters it in the same "Code" field → a brand-new PRO Owner.
+  //   - Someone with an invite link (wlp_...) joins the inviter's
+  //     existing business as an Associate/Staff/Client.
+  //   - Someone who has no code yet and isn't ready to sign up taps
+  //     Contact to reach you directly (however you set contactUrl below —
   //     mailto:, a WhatsApp link, a Calendly link, your own contact form,
   //     whatever you prefer). Payment and handing over a key both happen
-  //     completely outside the app, on your own terms.
-  //   - Someone you've ALREADY sold a key to (in person, by DM, however)
-  //     lands on this same page and can enter it directly in the code
-  //     field shown here — no separate screen needed.
-  //   - An existing free Partner (see proUpgradeSettings above) browsing
-  //     this page can also upgrade to Pro immediately, on the spot,
-  //     without contacting you at all — controlled by showUpgradeButton
-  //     below, using the SAME button_label/subtitle/upgrade flow as
+  //     completely outside the app, on your own terms. If contact_url is
+  //     left empty, the button falls back to BuyerConfig.supportEmail.
+  //   - An already-signed-in free Owner browsing this page can also
+  //     upgrade to Pro immediately — controlled by showUpgradeButton,
+  //     using the SAME button_label/subtitle/upgrade flow as
   //     proUpgradeSettings, so you only ever edit that text once.
-  // Turn any of the three sections on/off independently — whichever mix
-  // fits how you want to sell this.
+  // Turn any of the sections on/off independently — whichever mix fits
+  // how you want to sell this.
   static const Map<String, dynamic> marketingLandingSettings = {
     'headline': 'Run your own wellness business — powered by our platform',
     'subtitle': 'Everything you need to manage clients, staff, and bookings, '
@@ -96,7 +100,8 @@ abstract final class BuyerConfig {
     'show_contact_section': true,
     'contact_button_label': 'Get in touch',
     // mailto:, https://wa.me/<number>, a Calendly link, your own contact
-    // form URL — anything a device can open.
+    // form URL — anything a device can open. Empty → falls back to
+    // BuyerConfig.supportEmail.
     'contact_url': 'mailto:your-sales@email.com',
   };
 

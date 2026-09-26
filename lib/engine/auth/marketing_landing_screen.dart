@@ -1,20 +1,23 @@
 // lib/engine/auth/marketing_landing_screen.dart
 //
 // The one page a buyer's QR code, personal shared link, or social media
-// post should always point to — built to serve two different visitors
+// post should always point to — built to serve three different visitors
 // from the same URL, so the buyer never needs to juggle two links:
 //   - Someone with no code yet sees the pitch and taps Contact to reach
 //     the buyer directly (however BuyerConfig.marketingLandingSettings'
 //     contact_url is set — mailto:, WhatsApp, a form, anything a device
 //     can open). Payment and handing over a key happen entirely outside
 //     the app, on the buyer's own terms.
-//   - Someone who already has a key (sold to them in person, by DM,
-//     however) enters it directly in the field on this same page — no
-//     separate screen needed.
-//   - An already-signed-in free Partner browsing this page can upgrade
-//     to Pro immediately, using the exact same upgrade flow as the
-//     Settings screen's button (see BuyerConfig.proUpgradeSettings for
-//     that button's text — kept as one shared source of copy).
+//   - Someone who already has a code enters it in the SAME single form.
+//     One code field handles every way someone gets in — an invite-link
+//     token (wlp_..., joining an existing business), an activation key
+//     (brand-new Pro business), or a blank field (brand-new Free Owner).
+//     Resolution mirrors real mode's server-side handle_new_user()
+//     trigger (see mock_auth_source.dart's signUp for the mock twin).
+//   - An already-signed-in free Owner browsing this page can upgrade
+//     to Pro immediately, using the same upgrade flow as the Settings
+//     screen's button (see BuyerConfig.proUpgradeSettings for that
+//     button's text — kept as one shared source of copy).
 //
 // Content and which of the 3 sections show are entirely buyer-configured
 // in lib/config/buyer_config.dart — this file has no marketing copy of
@@ -56,7 +59,18 @@ class _MarketingLandingScreenState
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // Live-update the submit button (Activate vs Get started) as the
+    // visitor types or clears the code field.
+    _codeController.addListener(_onCodeChanged);
+  }
+
+  void _onCodeChanged() => setState(() {});
+
+  @override
   void dispose() {
+    _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();
     _nameController.dispose();
     _emailController.dispose();
@@ -64,8 +78,9 @@ class _MarketingLandingScreenState
     super.dispose();
   }
 
-  Future<void> _redeemKey() async {
+  Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    final code = _codeController.text.trim();
     setState(() {
       _isSaving = true;
       _error = null;
@@ -75,7 +90,7 @@ class _MarketingLandingScreenState
           email: _emailController.text.trim(),
           password: _passwordController.text,
           displayName: _nameController.text.trim(),
-          redemptionCode: _codeController.text.trim(),
+          redemptionCode: code.isEmpty ? null : code,
         );
 
     if (!mounted) return;
@@ -83,7 +98,8 @@ class _MarketingLandingScreenState
     if (authState is AuthUnauthenticated) {
       setState(() {
         _isSaving = false;
-        _error = authState.errorMessage ?? "That code isn't valid.";
+        _error =
+            authState.errorMessage ?? 'Could not create your account. Please try again.';
       });
       return;
     }
@@ -99,8 +115,11 @@ class _MarketingLandingScreenState
   }
 
   Future<void> _openContact() async {
-    final url = BuyerConfig.marketingLandingSettings['contact_url'] as String?;
-    if (url == null || url.isEmpty) return;
+    final configured =
+        BuyerConfig.marketingLandingSettings['contact_url'] as String?;
+    final url = (configured == null || configured.isEmpty)
+        ? 'mailto:${BuyerConfig.supportEmail}'
+        : configured;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -109,7 +128,7 @@ class _MarketingLandingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final settings = BuyerConfig.marketingLandingSettings;
+    const settings = BuyerConfig.marketingLandingSettings;
     final showKeyField = settings['show_activation_key_field'] as bool? ?? true;
     final showUpgradeButton = settings['show_upgrade_button'] as bool? ?? true;
     final showContact = settings['show_contact_section'] as bool? ?? true;
@@ -121,7 +140,14 @@ class _MarketingLandingScreenState
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.goNamed(RouteNames.login)),
+        actions: [
+          TextButton(
+            onPressed: authState is AuthUnauthenticated
+                ? () => context.goNamed(RouteNames.login)
+                : null,
+            child: const Text('Sign in'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -165,8 +191,9 @@ class _MarketingLandingScreenState
                       passwordController: _passwordController,
                       obscurePassword: _obscurePassword,
                       isSaving: _isSaving,
+                      hasCode: _codeController.text.trim().isNotEmpty,
                       error: _error,
-                      onSubmit: _redeemKey,
+                      onSubmit: _submit,
                       onTogglePassword: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
                     ),
@@ -196,7 +223,7 @@ class _UpgradeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final proSettings = BuyerConfig.proUpgradeSettings;
+    const proSettings = BuyerConfig.proUpgradeSettings;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
@@ -232,6 +259,7 @@ class _ActivationKeySection extends StatelessWidget {
     required this.passwordController,
     required this.obscurePassword,
     required this.isSaving,
+    required this.hasCode,
     required this.error,
     required this.onSubmit,
     required this.onTogglePassword,
@@ -244,6 +272,7 @@ class _ActivationKeySection extends StatelessWidget {
   final TextEditingController passwordController;
   final bool obscurePassword;
   final bool isSaving;
+  final bool hasCode;
   final String? error;
   final VoidCallback onSubmit;
   final VoidCallback onTogglePassword;
@@ -255,16 +284,15 @@ class _ActivationKeySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Already have an activation key?',
+          Text(
+            hasCode ? 'Activate your code' : 'Create your account',
             style: AppTextStyles.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppTextField(
-            hint: 'e.g. ZEN-YOGA-777',
-            label: 'Activation Key',
+            hint: 'Activation key or invite code (optional)',
+            label: 'Code (optional)',
             controller: codeController,
-            validator: AppValidators.required(fieldName: 'Activation Key'),
             textInputAction: TextInputAction.next,
             prefixIcon: Icons.vpn_key_outlined,
           ),
@@ -311,7 +339,7 @@ class _ActivationKeySection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           PrimaryButton(
-            label: 'Activate',
+            label: hasCode ? 'Activate' : 'Get started',
             onPressed: isSaving ? null : onSubmit,
             isLoading: isSaving,
           ),

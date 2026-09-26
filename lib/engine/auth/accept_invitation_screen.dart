@@ -294,7 +294,7 @@ class _RedemptionFormView extends StatelessWidget {
             color: colorScheme.primary,
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(
+          const Text(
             'Enter your code to get started',
             style: AppTextStyles.headlineLarge,
             textAlign: TextAlign.center,

@@ -88,7 +88,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     onToggleObscure:  () => setState(() => _obscurePassword = !_obscurePassword),
                     onSignIn:         _signIn,
                     onForgotPassword: () => context.goNamed(RouteNames.forgotPassword),
-                    onCreateAccount:  () => context.goNamed(RouteNames.signup),
+                    onLanding:        () => context.goNamed(RouteNames.marketingLanding),
                     onInviteCode:     () => context.goNamed(RouteNames.acceptInvitation),
                   ),
                 ],
@@ -115,7 +115,7 @@ class _SignInForm extends StatelessWidget {
     required this.onToggleObscure,
     required this.onSignIn,
     required this.onForgotPassword,
-    required this.onCreateAccount,
+    required this.onLanding,
     required this.onInviteCode,
   });
 
@@ -128,7 +128,7 @@ class _SignInForm extends StatelessWidget {
   final VoidCallback onToggleObscure;
   final VoidCallback onSignIn;
   final VoidCallback onForgotPassword;
-  final VoidCallback onCreateAccount;
+  final VoidCallback onLanding;
   final VoidCallback onInviteCode;
 
   @override
@@ -176,7 +176,7 @@ class _SignInForm extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _AuthNavigationButtons(
             onForgotPasswordPressed: onForgotPassword,
-            onCreateAccountPressed:  onCreateAccount,
+            onLandingPressed:        onLanding,
             onInviteCodePressed:     onInviteCode,
           ),
         ],
@@ -211,12 +211,12 @@ class _LogoAndHeader extends StatelessWidget {
 class _AuthNavigationButtons extends StatelessWidget {
   const _AuthNavigationButtons({
     required this.onForgotPasswordPressed,
-    required this.onCreateAccountPressed,
+    required this.onLandingPressed,
     required this.onInviteCodePressed,
   });
 
   final VoidCallback onForgotPasswordPressed;
-  final VoidCallback onCreateAccountPressed;
+  final VoidCallback onLandingPressed;
   final VoidCallback onInviteCodePressed;
 
   @override
@@ -231,14 +231,14 @@ class _AuthNavigationButtons extends StatelessWidget {
               child: const Text('Forgot password?'),
             ),
             TextButton(
-              onPressed: onCreateAccountPressed,
-              child: const Text('Create account'),
+              onPressed: onInviteCodePressed,
+              child: const Text('Have an invite code? Join here'),
             ),
           ],
         ),
         TextButton(
-          onPressed: onInviteCodePressed,
-          child: const Text('Have an invite code? Join here'),
+          onPressed: onLandingPressed,
+          child: const Text('New here? Visit our home page'),
         ),
       ],
     );
