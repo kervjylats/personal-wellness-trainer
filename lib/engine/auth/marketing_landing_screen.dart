@@ -14,12 +14,7 @@
 //     (brand-new Pro business), or a blank field (brand-new Free Owner).
 //     Resolution mirrors real mode's server-side handle_new_user()
 //     trigger (see mock_auth_source.dart's signUp for the mock twin).
-//   - An already-signed-in free Owner browsing this page can upgrade
-//     to Pro immediately, using the same upgrade flow as the Settings
-//     screen's button (see BuyerConfig.proUpgradeSettings for that
-//     button's text — kept as one shared source of copy).
-//
-// Content and which of the 3 sections show are entirely buyer-configured
+// Content and which of the 2 sections show are entirely buyer-configured
 // in lib/config/buyer_config.dart — this file has no marketing copy of
 // its own to edit.
 
@@ -36,7 +31,6 @@ import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
-import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 
 class MarketingLandingScreen extends ConsumerStatefulWidget {
   const MarketingLandingScreen({super.key});
@@ -55,7 +49,6 @@ class _MarketingLandingScreenState
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSaving = false;
-  bool _isUpgrading = false;
   String? _error;
 
   @override
@@ -107,13 +100,6 @@ class _MarketingLandingScreenState
     // here, same as every other successful sign-in in this app.
   }
 
-  Future<void> _upgrade() async {
-    setState(() => _isUpgrading = true);
-    await ref.read(authNotifierProvider.notifier).upgradeToPremium();
-    if (!mounted) return;
-    setState(() => _isUpgrading = false);
-  }
-
   Future<void> _openContact() async {
     final configured =
         BuyerConfig.marketingLandingSettings['contact_url'] as String?;
@@ -130,13 +116,9 @@ class _MarketingLandingScreenState
   Widget build(BuildContext context) {
     const settings = BuyerConfig.marketingLandingSettings;
     final showKeyField = settings['show_activation_key_field'] as bool? ?? true;
-    final showUpgradeButton = settings['show_upgrade_button'] as bool? ?? true;
     final showContact = settings['show_contact_section'] as bool? ?? true;
 
     final authState = ref.watch(authNotifierProvider);
-    final canUpgrade = showUpgradeButton &&
-        authState is AuthAuthenticated &&
-        AppRole.fromString(authState.profile.role).isPartner;
 
     return Scaffold(
       appBar: AppBar(
@@ -174,14 +156,6 @@ class _MarketingLandingScreenState
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  if (canUpgrade) ...[
-                    _UpgradeSection(
-                      isUpgrading: _isUpgrading,
-                      onUpgrade: _upgrade,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                  ],
-
                   if (showKeyField) ...[
                     _ActivationKeySection(
                       formKey: _formKey,
@@ -211,40 +185,6 @@ class _MarketingLandingScreenState
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _UpgradeSection extends StatelessWidget {
-  const _UpgradeSection({required this.isUpgrading, required this.onUpgrade});
-  final bool isUpgrading;
-  final VoidCallback onUpgrade;
-
-  @override
-  Widget build(BuildContext context) {
-    const proSettings = BuyerConfig.proUpgradeSettings;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            proSettings['subtitle'] as String? ?? '',
-            style: AppTextStyles.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          PrimaryButton(
-            label: proSettings['button_label'] as String? ?? 'Upgrade to Pro',
-            onPressed: isUpgrading ? null : onUpgrade,
-            isLoading: isUpgrading,
-          ),
-        ],
       ),
     );
   }

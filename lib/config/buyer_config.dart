@@ -59,15 +59,6 @@ abstract final class BuyerConfig {
 
   static const double platformFeePercentage = 5.0; 
 
-  // ── Monetization & "Upgrade to Pro" Redirects ──
-  static const Map<String, dynamic> proUpgradeSettings = {
-    'show_to_owner': true,        
-    'show_to_partner': true,      
-    'button_label': 'Launch Your Own App',
-    'subtitle': 'Get your own customized white-label practice and keep 100% of your earnings.',
-    'redirect_url': 'https://codecanyon.net/your-listing', 
-  };
-
   // ── Marketing Landing Page ──
   // This is the ONE page a QR code, a shared personal link, or a social
   // media post should point to — it's the single front door to the app
@@ -85,10 +76,6 @@ abstract final class BuyerConfig {
   //     whatever you prefer). Payment and handing over a key both happen
   //     completely outside the app, on your own terms. If contact_url is
   //     left empty, the button falls back to BuyerConfig.supportEmail.
-  //   - An already-signed-in free Owner browsing this page can also
-  //     upgrade to Pro immediately — controlled by showUpgradeButton,
-  //     using the SAME button_label/subtitle/upgrade flow as
-  //     proUpgradeSettings, so you only ever edit that text once.
   // Turn any of the sections on/off independently — whichever mix fits
   // how you want to sell this.
   static const Map<String, dynamic> marketingLandingSettings = {
@@ -96,7 +83,6 @@ abstract final class BuyerConfig {
     'subtitle': 'Everything you need to manage clients, staff, and bookings, '
         'all in one branded app.',
     'show_activation_key_field': true,
-    'show_upgrade_button': true,
     'show_contact_section': true,
     'contact_button_label': 'Get in touch',
     // mailto:, https://wa.me/<number>, a Calendly link, your own contact
