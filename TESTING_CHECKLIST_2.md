@@ -24,8 +24,8 @@ silently went missing once already, it's worth confirming directly
 rather than assuming it's holding this time.
 
 1. **Create Account** → sign up as a new Owner → complete onboarding.
-2. Go to **Network** → confirm **all 3 tabs (Partners/Staff/Clients) are
-   completely empty** — no "Jordan Partner," no "Sam"/"Riley" clients, no
+2. Go to **Network** → confirm **all 3 tabs (Associates/Staff/Clients) are
+   completely empty** — no "Jordan Associate," no "Sam"/"Riley" clients, no
    pre-existing data of any kind.
 3. **Settings → Business Features** → flip any switch off, then back on
    → confirm it actually sticks (reload the screen / navigate away and
@@ -46,10 +46,10 @@ behind it. Removed — every Client/Partner now has to arrive through a
 real invite link, same as intended everywhere else in the app.
 
 5. From the login screen, tap **Create Account** → confirm there is
-   **no Client/Partner toggle anymore** — the form goes straight to
+   **no Client/Associate toggle anymore** — the form goes straight to
    name/email/password, and successfully creates an **Owner** account.
 6. Confirm a small note is visible on this screen along the lines of
-   *"Joining as a Partner or Client? You'll need an invite link..."* —
+   *"Joining as an Associate or Client? You'll need an invite link..."* —
    this replaces the old toggle, so people looking for that path aren't
    left with no explanation.
 
@@ -57,21 +57,21 @@ real invite link, same as intended everywhere else in the app.
    `integration_test/flows/block_08_partner_test.dart`, not something you
    need to click through by hand, but worth knowing what changed and why)
 
-- **`08_05` (Partner agreements screen)** — turned out to already be
+- **`08_05` (Associate agreements screen)** — turned out to already be
   correct; an earlier audit flagged this incorrectly (searched the wrong
   folder and missed `PartnerDealsSlot`, which does show an "Agreements"
-  label on a Partner's own dashboard). No code change needed here — if
-  you want to spot-check it anyway: **Dev Quick Sign-In → Partner** →
+  label on an Associate's own dashboard). No code change needed here — if
+  you want to spot-check it anyway: **Dev Quick Sign-In → Associate** →
   confirm a "My Deal" card is visible on the dashboard with the literal
   word **"Agreements"** as a small label above it.
-- **`08_06` (Partner marketplace access)** — this one was a genuinely
-  wrong test, not a missing feature. It asserted a Partner *should* have
+- **`08_06` (Associate marketplace access)** — this one was a genuinely
+  wrong test, not a missing feature. It asserted an Associate *should* have
   Discover/Marketplace access, which contradicts the intended design:
   Marketplace is for two already-Pro **Owners** discovering each other —
-  a non-Pro Partner isn't an independent business yet, so there's nothing
+  a non-Pro Associate isn't an independent business yet, so there's nothing
   for them to offer there until they upgrade. The test now asserts the
-  correct thing (Partner should **not** see this). Spot-check: **Dev
-  Quick Sign-In → Partner** → dashboard should have **no** "Discover" or
+  correct thing (Associate should **not** see this). Spot-check: **Dev
+  Quick Sign-In → Associate** → dashboard should have **no** "Discover" or
   "Marketplace" text anywhere on it.
 
 ---
@@ -93,7 +93,7 @@ verified on anything but Web so far.
 Same format as before:
 
 ```
-Role: [Owner/Partner/Staff/Client]
+Role: [Owner/Associate/Staff/Client]
 Platform: [Web/Android/Windows]
 Screen: [e.g. Network tab]
 What happened: [what you saw]

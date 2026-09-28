@@ -8,8 +8,8 @@ A multi-role, white-label wellness practice management platform built with Flutt
 
 Personal Wellness Trainer is a configurable mobile + web app platform that lets wellness practitioners (yoga studios, life coaches, nutritionists, sound healers, etc.) run their business in one place. It supports four roles out of the box:
 
-- **Owner** — manages activities, team, finance, settings, and partnerships
-- **Partner** — a collaborating practitioner with their own limited view
+- **Owner** — manages activities, team, finance, settings, and collabs
+- **Associate** — a collaborating practitioner with their own limited view
 - **Staff** — employees/instructors with configurable permissions
 - **Client** — end users who book, pay, message, and track their progress
 
@@ -61,14 +61,14 @@ test/                # Unit tests per module + widget smoke test
 |--------|-------------|
 | Activity | Create and manage sessions/classes |
 | Finance | Revenue tracking, commissions, transactions |
-| Team | Partners, staff, clients — network management |
+| Team | Associates, staff, clients — network management |
 | Messaging | 1-on-1 and group chat with attachments |
 | Scheduling | Slot management and availability |
 | Reservations | Client booking system |
 | Catalog | Product/service shop |
 | Media | Video, audio, PDF content library |
 | Reviews | Client review collection |
-| Agreements | Marketplace and partnership deals |
+| Agreements | Marketplace and collab deals |
 | GPS | Location tracking (optional) |
 | Delivery Fees | Zone-based delivery configuration |
 | Inventory | Stock management |

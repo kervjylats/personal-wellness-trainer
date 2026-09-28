@@ -453,13 +453,19 @@ class AuthNotifier extends Notifier<AuthState> {
   PaymentGateway _resolvePaymentGateway() => FreePaymentGateway();
 
   Future<void> _tryRestoreSession() async {
+    // Cold-start warm-up only: if a sign-in/devQuickSignIn already landed
+    // while the restore was in flight (see upgrade_launch_test.dart), never
+    // let the restore clobber the freshly authenticated state. State reads
+    // here are legal because they happen after the awaits above.
     try {
       final profile = await _repository.restoreSession();
       if (profile != null) {
         final newOwner = await _checkIsNewOwner(profile);
-        state = AuthAuthenticated(profile: profile, isNewOwner: newOwner);
-        AppLogger.info('Session restored: ${profile.displayName}', tag: _tag);
-      } else {
+        if (state is AuthInitial) {
+          state = AuthAuthenticated(profile: profile, isNewOwner: newOwner);
+          AppLogger.info('Session restored: ${profile.displayName}', tag: _tag);
+        }
+      } else if (state is AuthInitial) {
         state = const AuthUnauthenticated();
       }
     } catch (e) {
@@ -468,7 +474,9 @@ class AuthNotifier extends Notifier<AuthState> {
         tag: _tag,
         error: e,
       );
-      state = const AuthUnauthenticated();
+      if (state is AuthInitial) {
+        state = const AuthUnauthenticated();
+      }
     }
   }
 

@@ -11,9 +11,9 @@ For each issue found, add an entry using this format:
 `
 ### Issue #N
 **Date:** YYYY-MM-DD
-**Role:** [Owner/Partner/Staff/Client]
+**Role:** [Owner/Associate/Staff/Client]
 **Job type:** [e.g. Yoga Studio]
-**Screen:** [e.g. Network > Partners tab]
+**Screen:** [e.g. Network > Associates tab]
 **Checklist item:** [Reference to specific checklist item, e.g. Phase 2.2 Step 5]
 **What happened:** [what you saw]
 **What you expected:** [what you think should've happened per checklist]
@@ -47,7 +47,7 @@ For each issue found, add an entry using this format:
 | # | Description | Checklist Reference | Status |
 |---|-------------|---------------------|--------|
 | 1 | Client picker on Homework screen shows all business-wide clients, not ownership-scoped | Client Checklist > Homework | Known, not yet fixed |
-| 2 | Create Account allows sign up as Partner/Client directly (not via invite) | Audit Findings §2.1 | Flagged, decision pending |
+| 2 | Create Account allows sign up as Associate/Client directly (not via invite) | Audit Findings §2.1 | Flagged, decision pending |
 | 3 | Mock mode: invite links can't be clicked end-to-end on second device | Phase 5, Item 1 | By design (mock mode limitation) |
 | 4 | Mock mode: no true real-time cross-account interaction | Phase 5, Item 2 | By design (mock mode limitation) |
 | 5 | Mock mode: no real payment processing | Phase 5, Item 3 | By design (mock mode limitation) |

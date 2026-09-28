@@ -43,7 +43,7 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 2. Sign up as Owner with unique email (e.g., owner1@test.com)
 3. Complete onboarding: pick Yoga Studio job type, business name Sunrise Yoga, color, bio
 4. Confirm landing on real Owner dashboard
-5. Verify Network tabs (Partners/Staff/Clients) all show EMPTY — no Jordan Partner or pre-seeded clients
+5. Verify Network tabs (Associates/Staff/Clients) all show EMPTY — no Jordan Associate or pre-seeded clients
 6. Sign out
 
 **Owner #2: Riverside Pilates (Pilates Studio job type)**
@@ -56,76 +56,76 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 1. Create Account with different email (owner3@test.com)
 3. Complete onboarding: pick Meditation Teacher job type, business name Tom's Meditation Coaching
 4. Verify empty Network tabs
-5. This owner will test the direct-invite Partner path specifically
+5. This owner will test the direct-invite Associate path specifically
 
 ---
 
-### 2.2 Direct-Invite Partner Path (Owner #3)
+### 2.2 Direct-Invite Associate Path (Owner #3)
 
-**Step 5: Owner #3 Invites a Partner**
+**Step 5: Owner #3 Invites an Associate**
 1. Sign in as Owner #3
-2. Network > Partners tab > Invite a Partner > generate link
+2. Network > Associates tab > Invite an Associate > generate link
 3. Confirm link/token is generated (mock mode: no real link click, just verify token appears)
-4. Use Dev Quick Sign-In > Partner to stand in for invited partner accepted
-5. Verify: Partner's Network screen shows Owner #3 as a small card at top (not a tab) — NOT No owner yet.
+4. Use Dev Quick Sign-In > Associate to stand in for invited associate accepted
+5. Verify: Associate's Network screen shows Owner #3 as a small card at top (not a tab) — NOT No owner yet.
 
-**Step 7: Partner Invites a Client**
-1. As Partner: invite a client (Network > FAB > Invite Client)
+**Step 7: Associate Invites a Client**
+1. As Associate: invite a client (Network > FAB > Invite Client)
 2. Use Dev Quick Sign-In > Client as stand-in for client accepted
 3. Verify client ownership:
-   - On Partner's Clients list: new client shows up
+   - On Associate's Clients list: new client shows up
    - On Owner #3's Clients tab: client should NOT appear (different ownership by design)
 
 **Step 8: Owner #3 Proposes a Deal**
-1. Back as Owner #3: Network > Partners tab > confirm Propose a deal banner appears (>=1 partner)
+1. Back as Owner #3: Network > Associates tab > confirm Propose a deal banner appears (>=1 associate)
 2. Tap banner > fill commission split > confirm it saves
 
-**Step 9: Partner Responds to Deal**
-1. As Partner: check same deal shows as pending/awaiting response
-2. Verify Partner can accept or decline
-3. Verify: Partner has NO way to originate a new deal proposal (Owner-only by design)
+**Step 9: Associate Responds to Deal**
+1. As Associate: check same deal shows as pending/awaiting response
+2. Verify Associate can accept or decline
+3. Verify: Associate has NO way to originate a new deal proposal (Owner-only by design)
 
 ---
 
-### 2.3 Marketplace / Discoverable Partner Path (Owner #1 <-> Owner #2)
+### 2.3 Marketplace / Discoverable Associate Path (Owner #1 <-> Owner #2)
 
-**Step 10: Owner #1 Sends Partnership Request**
+**Step 10: Owner #1 Sends Associate Request**
 1. Sign in as Owner #1 (real account, not Dev Quick Sign-In)
-2. Network > Partners tab > Discover new partners banner
-3. Browse > send partnership request to Owner #2's business
+2. Network > Associates tab > Discover new associates banner
+3. Browse > send an associate request to Owner #2's business
 
 **Step 11: Owner #2 Accepts**
 1. Sign in as Owner #2 (real account)
 2. Find pending request > accept > set commission split in dialog
 
-**Step 12: Both Sides Verify Active Partnership**
-1. Both: Network > Partners shows partnership as active
+**Step 12: Both Sides Verify Active Collab**
+1. Both: Network > Associates shows collab as active
 
 **Step 13: Propose Deal Between Independent Owners**
 1. As Owner #1 (or #2): Propose a deal works same as direct-invite case
-2. Same mechanism, different partnership origin
+2. Same mechanism, different collab origin
 
 ---
 
 ### 2.4 Business Features Toggles
 
-**Step 14: Turn Partners OFF**
-1. As any Owner: Settings > Business Features > flip Partners off
-2. Verify: Partners tab shows Partnerships are turned off message (not empty list)
-3. Verify: Invite a partner button disappears
+**Step 14: Turn Collabs OFF**
+1. As any Owner: Settings > Business Features > flip Collabs off
+2. Verify: Associates tab shows Collabs are turned off message (not empty list)
+3. Verify: Invite an associate button disappears
 4. Verify: Marketplace/Deals switches grey out
 
-**Step 15: Turn Partners ON**
-1. Flip Partners back on
+**Step 15: Turn Collabs ON**
+1. Flip Collabs back on
 2. Verify: Marketplace/Deals switches return to previous state (not reset to default)
 
-**Step 16: Partners ON, Marketplace OFF**
-1. Partners on, Marketplace off
-2. Verify: Discover new partners banner gone
-3. Verify: Propose a deal banner still works (if partner exists) — independent switches
+**Step 16: Collabs ON, Marketplace OFF**
+1. Collabs on, Marketplace off
+2. Verify: Discover new associates banner gone
+3. Verify: Propose a deal banner still works (if associate exists) — independent switches
 
-**Step 17: Partners ON, Agreements OFF**
-1. Partners on, Agreements off
+**Step 17: Collabs ON, Agreements OFF**
+1. Collabs on, Agreements off
 2. Verify: Discover banner still there
 3. Verify: Propose a deal banner gone
 
@@ -134,11 +134,11 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 ### 2.5 Clients
 
 **Step 18: Owner Direct-Invites Client**
-1. Pick any Owner > invite Client directly (not through Partner)
+1. Pick any Owner > invite Client directly (not through Associate)
 2. Verify: Client shows up on that Owner's own Clients tab
 
 **Step 19: Client View Verification**
-1. As that Client: verify their view loads: Contacts/Partners tab, Payments, Community feed, Challenges, Homework, Rewards, Profile
+1. As that Client: verify their view loads: Contacts/Associates tab, Payments, Community feed, Challenges, Homework, Rewards, Profile
 
 **Step 20: Client-Invites-Client Chain (Jim/Tom/Sarah Referral)**
 1. As Client from step 18: invite another client
@@ -152,29 +152,29 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 
 ### 3.1 Owner Checklist
 - [ ] Dashboard loads with sensible summary cards/stats
-- [ ] Dashboard client count reflects only directly-owned clients (not Partner's clients)
+- [ ] Dashboard client count reflects only directly-owned clients (not Associate's clients)
 - [ ] Content (Activity) — list loads, create new, open detail, edit, delete
 - [ ] Content > Tools cards — Scheduling, Reservations, Catalog, Inventory, Media, Delivery Fees, Reviews each open correctly and only show when job type uses that module
 - [ ] Revenue (Finance) — transactions list loads, commission view loads, numbers look sane
-- [ ] Network > Partners tab — list loads, scoped correctly; Discover and Propose deal banners only appear when Business Features switches are on
+- [ ] Network > Associates tab — list loads, scoped correctly; Discover and Propose deal banners only appear when Business Features switches are on
 - [ ] Network > Staff tab — list loads, invite works
-- [ ] Network > Clients tab — list loads, invite works, only shows directly-owned clients (not Partner's clients)
+- [ ] Network > Clients tab — list loads, invite works, only shows directly-owned clients (not Associate's clients)
 - [ ] Settings > Business Features — all 3 switches work as per toggle test plan
 - [ ] Chat icon (top bar) — opens conversations list; per-row chat icons on member tiles work
 - [ ] Notifications — bell icon list loads, marking as read works
-- [ ] Settings — Own Business screen, Branding screen (color change propagates app-wide); Owner should NOT see Launch Your Own Practice upgrade banner or locked Branding tile (Partner-only)
+- [ ] Settings — Own Business screen, Branding screen (color change propagates app-wide); Owner should NOT see Launch Your Own Practice upgrade banner or locked Branding tile (Associate-only)
 
 ---
 
-### 3.2 Partner Checklist
+### 3.2 Associate Checklist
 - [ ] Dashboard loads, shows upgrade banner at top of every tab
 - [ ] Upgrade banner's button navigates somewhere sensible
 - [ ] Activity — can view but cannot create (view-only or per-permission)
-- [ ] Finance — partner-scoped view loads (only their numbers, not Owner's full business)
-- [ ] Network — Owner shown as card at top (not tab); single Clients list below, scoped to only clients this Partner personally invited (not shared pool); FAB invite adds client to Partner's own list
-- [ ] Partner can respond (accept/decline) to deal proposed by Owner, but has NO way to originate new deal proposal
+- [ ] Finance — associate-scoped view loads (only their numbers, not Owner's full business)
+- [ ] Network — Owner shown as card at top (not tab); single Clients list below, scoped to only clients this Associate personally invited (not shared pool); FAB invite adds client to Associate's own list
+- [ ] Associate can respond (accept/decline) to deal proposed by Owner, but has NO way to originate new deal proposal
 - [ ] Upgrade to Pro (Settings > Launch Your Own Practice) — confirm shell switches to full Owner view immediately, no re-login
-- [ ] AppBar title shows Partner's own business name, not just Partner
+- [ ] AppBar title shows Associate's own business name, not just Associate
 
 ---
 
@@ -189,7 +189,7 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 ### 3.4 Client Checklist
 - [ ] Dashboard loads
 - [ ] Activity Hub — browse available classes/sessions
-- [ ] Partners tab — one tab covers both partner content and contacts: loads without crashing before any partnership exists (empty-state messages, not errors), shows contacts (owner, partners, eligible staff) further down, working invite button (bottom-right)
+- [ ] Associates tab — one tab covers both associate content and contacts: loads without crashing before any collab exists (empty-state messages, not errors), shows contacts (owner, associates, eligible staff) further down, working invite button (bottom-right)
 - [ ] Inviting another client via that button correctly assigns new client to your own owner, not to you (step 20 referral-chain behavior)
 - [ ] Payments — client-facing payment history loads
 - [ ] Community Feed — loads, can post/interact if supported
@@ -203,11 +203,11 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 
 ## Phase 4: Upgrade to Pro Walkthrough
 
-1. As Partner, invite a client via Network > invite button > confirm client scoped to Partner
+1. As Associate, invite a client via Network > invite button > confirm client scoped to Associate
 2. Go to Settings > Launch Your Own Practice > confirm upgrade
 3. Shell switches to full Owner view immediately — no sign-out/sign-in needed
-4. Check new business's Network > Clients — clients invited as Partner now appear under new independent business
-5. Original within-business agreement (commission deal with Owner who invited Partner) stays under original business — upgrading doesn't erase/move historical relationship (intentional)
+4. Check new business's Network > Clients — clients invited as Associate now appear under new independent business
+5. Original within-business agreement (commission deal with Owner who invited Associate) stays under original business — upgrading doesn't erase/move historical relationship (intentional)
 6. New business's Business Features switches default to all-on, independent of original Owner's settings
 
 ---
@@ -229,12 +229,12 @@ Based on TESTING_CHECKLIST.md and codebase analysis.
 |-------|-------|-------------|----------------|
 | 1 | Phase 1 | Cross-cutting checks (all roles) | 30 min |
 | 2 | Phase 2.1 | Create 3 Owner accounts | 20 min |
-| 3 | Phase 2.2 | Direct-invite Partner path (Owner #3) | 20 min |
+| 3 | Phase 2.2 | Direct-invite Associate path (Owner #3) | 20 min |
 | 4 | Phase 2.3 | Marketplace path (Owner #1 <-> Owner #2) | 15 min |
 | 5 | Phase 2.4 | Business Features toggles | 15 min |
 | 6 | Phase 2.5 | Client flows & referral chain | 15 min |
 | 7 | Phase 3.1 | Owner detailed checklist | 20 min |
-| 8 | Phase 3.2 | Partner detailed checklist | 15 min |
+| 8 | Phase 3.2 | Associate detailed checklist | 15 min |
 | 9 | Phase 3.3 | Staff detailed checklist | 10 min |
 | 10 | Phase 3.4 | Client detailed checklist | 15 min |
 | 11 | Phase 4 | Upgrade to Pro walkthrough | 10 min |
@@ -247,7 +247,7 @@ Total: ~3 hours
 
 For each issue found, paste:
 
-Role: [Owner/Partner/Staff/Client]
+Role: [Owner/Associate/Staff/Client]
 Job type: [e.g. Yoga Studio]
 Screen: [e.g. Reservations list]
 What happened: [what you saw]
@@ -281,7 +281,7 @@ For suggestions/ideas: plain language — what if X worked like Y instead
 ## Known Issues to Watch For (Pre-existing, Not Yet Fixed)
 
 1. Client picker on Homework screen — not ownership-scoped (shows all clients business-wide)
-2. Sign up as Partner/Client directly — Create Account allows this but it's not intended flow (flagged in AUDIT_FINDINGS.md §2.1)
+2. Sign up as Associate/Client directly — Create Account allows this but it's not intended flow (flagged in AUDIT_FINDINGS.md §2.1)
 3. Mock mode limitations — see Phase 5 above
 
 ---

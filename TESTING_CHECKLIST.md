@@ -16,15 +16,15 @@ roster you build up yourself through invites) — this was a real bug
 before this session's fixes; see `AUDIT_FINDINGS.md` §1.1 if curious.
 
 ⚠️ Heads up (see `AUDIT_FINDINGS.md` §2.1): "Create Account" currently
-also lets you sign up directly as **Partner** or **Client** with no invite
-at all — that path is not part of the intended flow (every Partner/Client
+also lets you sign up directly as **Associate** or **Client** with no invite
+at all — that path is not part of the intended flow (every Associate/Client
 is supposed to arrive via an invite link) and is flagged as a decision for
 you, not fixed yet. For testing purposes, only use "Create Account" to
 create **Owners**.
 
 **Dev Quick Sign-In (fast, for spot-checking)** — the small orange
 floating button on the login screen. Tap a job-type chip to sign in
-instantly as that job's Owner, or a role chip (Partner/Staff/Client) to
+instantly as that job's Owner, or a role chip (Associate/Staff/Client) to
 sign in as that role on the one shared seed business. Skips onboarding
 entirely — use this when you just want to poke at a specific screen, not
 when testing the signup/onboarding experience itself.
@@ -37,7 +37,7 @@ part of what got fixed this session).
 ## The 3-owner test plan you asked for
 
 This exercises the full real-world path: signup → onboarding → invites →
-partnerships (both kinds) → deals → clients. Recommend running it exactly
+collabs (both kinds) → deals → clients. Recommend running it exactly
 like this at least once, then improvising further tests from the per-role
 checklists below.
 
@@ -50,72 +50,72 @@ checklists below.
    (e.g. "Riverside Pilates").
 3. Sign out. **Create Account** again → Owner #3 (e.g. "Tom's Meditation
    Coaching" — pick something where you plan to test the *direct-invite*
-   Partner path specifically, see below).
-4. For each: confirm **Network** tabs (Partners/Staff/Clients) all show
+   Associate path specifically, see below).
+4. For each: confirm **Network** tabs (Associates/Staff/Clients) all show
    **empty**, not pre-populated with fake names. This is the specific bug
-   that was fixed — if you see a "Jordan Partner" or existing clients on a
+   that was fixed — if you see a "Jordan Associate" or existing clients on a
    business you just created, that's a regression, tell me.
 
-### Direct-invite Partner path (Owner #3)
+### Direct-invite Associate path (Owner #3)
 
-5. As Owner #3: **Network → Partners tab → invite a Partner** → generate
+5. As Owner #3: **Network → Associates tab → Invite an Associate** → generate
    the link (in mock mode, you won't actually click a real link — just
    confirm the link/token is generated; see "what won't be effective in
    mock mode" below).
 6. Since clicking a real invite link isn't practical solo in mock mode,
-   use **Dev Quick Sign-In → Partner** to stand in for "the invited
-   partner accepted." Confirm: their **Network** screen shows Owner #3 as
+   use **Dev Quick Sign-In → Associate** to stand in for "the invited
+   associate accepted." Confirm: their **Network** screen shows Owner #3 as
    a small **card at the top** (not a tab) — the "No owner yet." bug is
    what this replaced.
-7. As that Partner: **invite a client** → confirm the client ends up
-   scoped to the **Partner**, not to Owner #3 — i.e. on the Partner's own
+7. As that Associate: **invite a client** → confirm the client ends up
+   scoped to the **Associate**, not to Owner #3 — i.e. on the Associate's own
    Clients list, the new client shows up; on Owner #3's own Clients tab,
    it should **not** appear (different ownership, by design — see earlier
    conversation for why).
-8. Back as Owner #3: **Network → Partners tab** → confirm you now see a
-   **"Propose a deal"** banner (only appears once you have ≥1 partner) →
+8. Back as Owner #3: **Network → Associates tab** → confirm you now see a
+   **"Propose a deal"** banner (only appears once you have ≥1 associate) →
    tap it → fill in a commission split → confirm it saves.
-9. As the Partner: check that the same deal shows up as pending/awaiting
+9. As the Associate: check that the same deal shows up as pending/awaiting
    their response, and that they can **accept or decline** it — but if you
-   look for any way for the *Partner* to originate a brand-new deal
+   look for any way for the *Associate* to originate a brand-new deal
    proposal themselves, there shouldn't be one (Owner-only, by design).
 
-### Marketplace / discoverable Partner path (Owner #1 ↔ Owner #2)
+### Marketplace / discoverable Associate path (Owner #1 ↔ Owner #2)
 
-10. As Owner #1: **Network → Partners tab → "Discover new partners"**
-    banner → browse → send a partnership request to Owner #2's business
+10. As Owner #1: **Network → Associates tab → "Discover new associates"**
+    banner → browse → send an associate request to Owner #2's business
     (or use an already-seeded pending request if one shows up).
 11. Sign in as Owner #2 (their real account, not dev quick sign-in — you
     want to confirm a *genuinely separate real business* can receive and
     respond) → find the pending request → accept it → set a commission
     split in the dialog.
-12. Both sides: confirm **Network → Partners** now shows the partnership
+12. Both sides: confirm **Network → Associates** now shows the collab
     as active.
 13. As Owner #1 (or #2): confirm **Propose a deal** works between two
     already-independent Owners the same way it did for the direct-invite
-    case in step 8 — same mechanism, different partnership origin.
+    case in step 8 — same mechanism, different collab origin.
 
 ### Business Features toggles
 
-14. As any Owner: **Settings → Business Features** → flip **Partners**
-    off → confirm the Partners tab now shows a clear "Partnerships are
-    turned off" message (not an empty list), the "invite a partner"
+14. As any Owner: **Settings → Business Features** → flip **Collabs**
+    off → confirm the Associates tab now shows a clear "Collabs are
+    turned off" message (not an empty list), the "invite an associate"
     button disappears, and the Marketplace/Deals switches on this same
     settings screen grey out.
-15. Flip **Partners** back on → confirm Marketplace/Deals switches return
+15. Flip **Collabs** back on → confirm Marketplace/Deals switches return
     to whatever they were set to before (not reset to a default).
-16. With Partners **on** but **Marketplace off**: confirm the "Discover
-    new partners" banner is gone but the Propose-a-deal banner (if you
-    already have a partner) still works — these are independent switches.
-17. With Partners **on** but **Agreements off**: confirm the reverse —
+16. With Collabs **on** but **Marketplace off**: confirm the "Discover
+    new associates" banner is gone but the Propose-a-deal banner (if you
+    already have an associate) still works — these are independent switches.
+17. With Collabs **on** but **Agreements off**: confirm the reverse —
     Discover banner still there, Propose-a-deal banner gone.
 
 ### Clients
 
-18. Pick any Owner from above, invite a Client directly (not through a
-    Partner) → confirm that client shows up on **that Owner's own**
+18. Pick any Owner from above, invite a Client directly (not through an
+    Associate) → confirm that client shows up on **that Owner's own**
     Clients tab.
-19. As that Client: confirm their own view (contacts/Partners tab,
+19. As that Client: confirm their own view (contacts/Associates tab,
     payments, community feed, challenges, homework, rewards, profile) —
     see the Client checklist below for the full list.
 20. As that Client, invite *another* client → sign in as the new client
@@ -137,7 +137,7 @@ checklists below.
   for "someone accepted," as the plan above does.
 - **Two Owner accounts interacting in true real-time** (e.g. Owner #2
   receiving a live push notification the instant Owner #1 sends a
-  partnership request). Everything's local/in-memory — you'll switch
+  associate request). Everything's local/in-memory — you'll switch
   between accounts by signing out and back in, not by having two sessions
   open live side by side (except via the QA Console, which does show all
   4 *roles* at once, but that's one shared seed business, not your 3
@@ -176,7 +176,7 @@ checklists below.
 
 - [ ] **Dashboard** loads with sensible summary cards/stats
 - [ ] **Dashboard client count** reflects only clients this Owner directly
-      owns, not clients that actually belong to one of their Partners
+      owns, not clients that actually belong to one of their Associates
 - [ ] **Content** (Activity) — list loads, create new one, open detail, edit,
       delete
 - [ ] **Content → Tools cards** — Scheduling, Reservations, Catalog,
@@ -184,13 +184,13 @@ checklists below.
       only show up when the active job type actually uses that module
 - [ ] **Revenue** (Finance) — transactions list loads, commission view (if
       applicable) loads, numbers look sane
-- [ ] **Network → Partners tab** — list loads, scoped correctly (see the
+- [ ] **Network → Associates tab** — list loads, scoped correctly (see the
       3-owner plan above for the full walkthrough); "Discover new
-      partners" and "Propose a deal" banners only appear when their
+      associates" and "Propose a deal" banners only appear when their
       respective Business Features switches are on
 - [ ] **Network → Staff tab** — list loads, invite works
 - [ ] **Network → Clients tab** — list loads, invite works, **only shows
-      clients this Owner directly owns** (not a Partner's clients — this
+      clients this Owner directly owns** (not an Associate's clients — this
       was a fixed bug, worth double-checking)
 - [ ] **Settings → Business Features** — all 3 switches work as described
       in the toggle test plan above
@@ -200,29 +200,29 @@ checklists below.
 - [ ] **Settings** — Own Business screen, Branding screen (color change
       propagates app-wide); Owner should **not** see any "Launch Your Own
       Practice" upgrade banner or a locked Branding tile — that's
-      Partner-only
+      Associate-only
 
-## Partner checklist
+## Associate checklist
 
 - [ ] **Dashboard** loads, shows the upgrade banner at the top of every tab
 - [ ] Upgrade banner's button actually navigates somewhere sensible
 - [ ] **Activity** — can view but *cannot* create (should be view-only, or
       whatever the intended permission is — flag if it feels wrong)
-- [ ] **Finance** — partner-scoped view loads (should only show *their*
+- [ ] **Finance** — associate-scoped view loads (should only show *their*
       numbers, not the owner's full business)
 - [ ] **Network** — Owner shown as a **card at top** (not a tab); single
-      **Clients** list below it, scoped to **only clients this Partner
+      **Clients** list below it, scoped to **only clients this Associate
       personally invited** (not a shared pool with the Owner — this
       changed from earlier behavior, see our conversation history);
-      invite button (bottom-right) adds a new client to this Partner's
+      invite button (bottom-right) adds a new client to this Associate's
       own list
-- [ ] Partner can **respond** to (accept/decline) a deal proposed by their
+- [ ] Associate can **respond** to (accept/decline) a deal proposed by their
       Owner, but has **no way to originate** a new deal proposal
       themselves
 - [ ] **Upgrade to Pro** (Settings → Launch Your Own Practice) — see the
       dedicated walkthrough below; confirm your shell switches to the
       full Owner view immediately, no re-login needed
-- [ ] AppBar title shows the partner's own business name, not just "Partner"
+- [ ] AppBar title shows the associate's own business name, not just "Associate"
 
 ## Staff checklist
 
@@ -237,10 +237,10 @@ checklists below.
 
 - [ ] **Dashboard** loads
 - [ ] **Activity Hub** — browse available classes/sessions
-- [ ] **Partners tab** — one tab covers both partner content and contacts.
-      Confirm it loads without crashing even before any partnership
+- [ ] **Associates tab** — one tab covers both associate content and contacts.
+      Confirm it loads without crashing even before any collab
       exists (should show empty-state messages, not errors), shows your
-      contacts (owner, partners, eligible staff) further down, and has a
+      contacts (owner, associates, eligible staff) further down, and has a
       working invite button (bottom-right)
 - [ ] Inviting another client via that button correctly assigns the new
       client to **your own owner**, not to you (see step 20 in the
@@ -261,15 +261,15 @@ checklists below.
 
 ## Upgrade to Pro walkthrough
 
-This is the "free Partner becomes their own independent Owner" flow.
+This is the "free Associate becomes their own independent Owner" flow.
 
-1. As **Partner**, invite a client via **Network → invite button** —
+1. As **Associate**, invite a client via **Network → invite button** —
    confirm the client is scoped to you as described above.
 2. Go to **Settings → Launch Your Own Practice** → confirm the upgrade.
 3. Your shell should switch to the **full Owner view immediately** — no
    sign-out/sign-in needed.
 4. Check your new business's **Network → Clients** — any clients you
-   personally invited as a Partner should now appear here, under your new
+   personally invited as an Associate should now appear here, under your new
    independent business.
 5. Your **original within-business agreement** (the commission deal with
    the Owner who first invited you, if you had set one up) stays exactly
@@ -286,7 +286,7 @@ This is the "free Partner becomes their own independent Owner" flow.
 Doesn't need to be fancy — paste something like this per issue:
 
 ```
-Role: [Owner/Partner/Staff/Client]
+Role: [Owner/Associate/Staff/Client]
 Job type: [e.g. Yoga Studio]
 Screen: [e.g. Reservations list]
 What happened: [what you saw]

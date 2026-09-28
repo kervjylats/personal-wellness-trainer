@@ -67,6 +67,25 @@ class TeamNotifier extends AsyncNotifier<List<TeamMemberModel>> {
     String? email,
     String? categoryId,
   }) async {
+    // A business may have at most ONE active partner per category (Blueprint
+    // rule): reject the invite up-front so the UI can show a meaningful
+    // error instead of letting a duplicate partner land in the list.
+    if (role == 'partner' && categoryId != null) {
+      // The provider's build may still be in flight when inviteMember is
+      // called — fall back to the repo so the rule always sees the truth.
+      final current = state.valueOrNull ?? await _repo.getMembers(_businessId);
+      final existing = current.where((m) =>
+          m.role == 'partner' &&
+          m.categoryId == categoryId &&
+          m.isActive);
+      if (existing.isNotEmpty) {
+        ref.read(teamActionErrorProvider.notifier).state =
+            'Cannot invite: an active partner already covers category '
+            '$categoryId.';
+        return null;
+      }
+    }
+
     final prevState = state;
     state = const AsyncLoading();
     try {

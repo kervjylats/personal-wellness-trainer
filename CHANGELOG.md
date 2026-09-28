@@ -3,6 +3,23 @@
 A plain-English summary of everything fixed. You don't need to read the code
 to understand this — just what changed and why.
 
+## Latest — Round 5 fixes
+
+1. **Session restore no longer kicks you out after a fast sign-in.** On web,
+   a background "restore previous session" could land right after you signed
+   in and wipe the fresh session back to logged-out. Restore now only runs if
+   nothing else has already signed you in.
+2. **A business can no longer have two active Associates in the same
+   category.** Inviting an Associate into a category that already has an
+   active one is rejected up-front with a clear error instead of silently
+   creating a duplicate. (This matches the Blueprint's one-Associate-per-
+   category rule.)
+3. **Terminology sweep in the current-state docs.** README, testing
+   checklists, the execution plan, and the issues log now use the product's
+   current language — Associate and Collab — everywhere they describe the UI,
+   while code-level "partner" names (classes, files, DB roles, config keys)
+   are untouched.
+
 ## 🔴 Security — do this first
 
 **The old Supabase key is no longer in the app's source code.** It's been
