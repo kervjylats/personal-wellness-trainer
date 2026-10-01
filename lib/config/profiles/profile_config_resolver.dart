@@ -23,7 +23,9 @@ final profileConfigProvider = Provider<BaseProfileConfig>(
     final profile = authState.profile;
     return resolveProfileConfig(profile);
   },
-  // See lib/dev_tools/qa_console_screen.dart for why this is required.
+  // The body reads authNotifierProvider, so it must be declared here for
+  // Riverpod's override-scoping check to pass in any context (e.g. tests)
+  // that overrides authNotifierProvider.
   dependencies: [authNotifierProvider],
 );
 

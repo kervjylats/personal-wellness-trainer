@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
-import 'package:personal_wellness_trainer/core/widgets/dev_quick_launch.dart';
 import 'package:personal_wellness_trainer/core/utils/validators.dart';
 import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/error_display.dart';
@@ -63,7 +62,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      floatingActionButton: const DevQuickLaunchButton(),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

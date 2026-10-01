@@ -6,7 +6,6 @@ import 'package:personal_wellness_trainer/core/constants/app_constants.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/data/models/user_profile.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_invite_source.dart';
-import 'package:personal_wellness_trainer/data/sources/mock/mock_profiles.dart';
 import 'package:personal_wellness_trainer/data/sources/mock/mock_team_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_repository.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
@@ -50,28 +49,13 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
       return fromPrefs;
     }
 
-    // Only the 4 recognized mock test accounts can sign in via the
-    // email/password form. Any other email (that didn't sign up above)
-    // is an invalid-credentials error.
-    //
-    // Without this check, MockProfiles.getProfileByEmail's "any other
-    // email → client role" fallback would let ANY email/password combo
-    // sign in successfully — including genuinely wrong credentials —
-    // which is incorrect even for a mock.
-    final isRecognized = trimmed.startsWith(AppConstants.mockOwnerPrefix) ||
-        trimmed.startsWith(AppConstants.mockPartnerPrefix) ||
-        trimmed.startsWith(AppConstants.mockStaffPrefix) ||
-        trimmed.startsWith(AppConstants.mockClientPrefix);
-
-    if (!isRecognized) {
-      throw Exception('Invalid email or password.');
-    }
-
-    final profile = await MockProfiles.getProfileByEmail(email);
-    if (profile == null) throw Exception('Sign-in failed. Please try again.');
-
-    await _saveSession(email);
-    return profile;
+    // Reaching here means the email has no signed-up account — not in
+    // memory (above) and not in persisted prefs. Dev shortcuts (the old
+    // owner@/partner@/staff@/client@ "recognized prefix" back-door and
+    // seeded profiles reachable by password-less sign-in) were removed
+    // in Round 6: a production-feel build must reject unknown emails
+    // exactly like a real backend would.
+    throw Exception('Invalid email or password.');
   }
 
 // Redemption-code resolution mirrors real mode's handle_new_user()
@@ -232,12 +216,12 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
       return fromPrefs;
     }
 
-    final profile = await MockProfiles.getProfileByEmail(email);
-    if (profile == null) {
-      await prefs.remove(_kSessionEmail);
-      return null;
-    }
-    return profile;
+    // Round 6: the old MockProfiles.getProfileByEmail fallback that let
+    // stale sessions (e.g. 'owner@test.com' saved by the removed dev
+    // sign-in tools) silently restore a seeded account is gone. A session
+    // whose profile can't be found is not a real account — drop it.
+    await prefs.remove(_kSessionEmail);
+    return null;
   }
 
   @override
@@ -325,6 +309,38 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
   Future<void> _saveSession(String email) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSessionEmail, email.trim().toLowerCase());
+  }
+
+  /// Resolves a signed-up account by user id — the by-id mirror of
+  /// MockProfiles.getProfileById, but for accounts created through the
+  /// real sign-up/join flows (they live under _signedUpProfiles and the
+  /// per-email prefs JSON, not the seeded profile store). Used by the
+  /// finance layer to name a cross-business collab counterparty; returns
+  /// null when the account isn't loaded (Phase 10: fetch from the
+  /// profiles table instead).
+  static Future<UserProfile?> getProfileByUserId(String userId) async {
+    for (final p in _signedUpProfiles.values) {
+      if (p.userId == userId) return p;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const prefix = 'ae_mock_profile_json_';
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith(prefix)) continue;
+        final json = prefs.getString(key);
+        if (json == null) continue;
+        final profile = UserProfile.fromJson(
+            Map<String, dynamic>.from(jsonDecode(json) as Map));
+        if (profile.userId == userId) {
+          _signedUpProfiles[profile.email ?? key.substring(prefix.length)] =
+              profile;
+          return profile;
+        }
+      }
+    } catch (e) {
+      AppLogger.warning('Failed to resolve profile by userId', tag: _tag, error: e);
+    }
+    return null;
   }
 
   Future<void> _persistProfile(UserProfile profile) async {

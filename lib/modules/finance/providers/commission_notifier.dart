@@ -32,10 +32,21 @@ class CommissionNotifier extends AsyncNotifier<List<CommissionModel>> {
 
       AppLogger.debug('CommissionNotifier: loading for ${role.value}', tag: _tag);
 
-      if (role.isOwner) return await _repo.getCommissions(profile.businessId);
+      if (role.isOwner) {
+        // Owed BY my business (Mark Paid lives on these) merged with
+        // owed TO me — on a marketplace collab the counterparty's
+        // payment books a commission whose businessId is their business
+        // but partnerId is ME, so without this an owner-role payee
+        // would never see money coming to them.
+        final owed = await _repo.getCommissions(profile.businessId);
+        final payable =
+            await _repo.getCommissionsForPartner(profile.userId);
+        final all = [...owed, ...payable];
+        all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return all;
+      }
       if (role.isPartner) {
-        return await _repo.getCommissionsForPartner(
-            profile.businessId, profile.userId);
+        return await _repo.getCommissionsForPartner(profile.userId);
       }
       return [];
     } catch (e, st) {
@@ -51,8 +62,16 @@ class CommissionNotifier extends AsyncNotifier<List<CommissionModel>> {
 
   Future<bool> markPaid(String commissionId) async {
     ref.read(financeActionErrorProvider.notifier).state = null;
+    final auth = ref.read(authNotifierProvider);
+    if (auth is! AuthAuthenticated) return false;
     try {
-      await _repo.markCommissionPaid(commissionId);
+      // The payout row records who actually sent the money — the
+      // signing-in business, not a hardcoded seed name.
+      await _repo.markCommissionPaid(
+        commissionId,
+        payerUserId: auth.profile.userId,
+        payerName: auth.profile.businessName ?? auth.profile.displayName,
+      );
       ref.invalidateSelf();
       return true;
     } catch (e, st) {

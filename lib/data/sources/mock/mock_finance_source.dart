@@ -13,8 +13,16 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
   static final List<TransactionModel> _transactions = _buildSeedTransactions();
   static final List<CommissionModel> _commissions = _buildSeedCommissions();
 
-  final List<TransactionModel> _mutableTransactions = List.from(_transactions);
-  final List<CommissionModel> _mutableCommissions = List.from(_commissions);
+  // Shared across instances: resolveFinanceRepository() returns a NEW
+  // MockFinanceSource() on every notifier rebuild, so instance-level
+  // copies silently discarded recorded payments/commissions (Round 6
+  // probe: payment recorded -> invalidateSelf -> fresh instance ->
+  // seed-only ledger -> "No transactions yet"). Static like every other
+  // mock source's store.
+  static final List<TransactionModel> _mutableTransactions =
+      List.from(_transactions);
+  static final List<CommissionModel> _mutableCommissions =
+      List.from(_commissions);
 
   @override
   Future<List<TransactionModel>> getTransactions(String businessId) async {
@@ -23,35 +31,26 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     
     final matches = _mutableTransactions.where((t) => t.businessId == businessId).toList();
     if (matches.isEmpty) {
-      // Dynamic Fallback: Clone seed transactions to the active businessId
-      return _mutableTransactions.map((t) => t.copyWith(businessId: businessId)).toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Round 6: no more "clone seed transactions onto whatever business
+      // asked" fallback — a brand-new business must start at $0 like a
+      // real one, not show money it never earned.
+      return <TransactionModel>[];
     }
     return matches..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   @override
-  Future<List<TransactionModel>> getTransactionsForUser(
-    String businessId,
-    String userId,
-  ) async {
+  Future<List<TransactionModel>> getTransactionsForUser(String userId) async {
     await simulateNetworkDelay();
+    // Keyed by user only: a marketplace payout is booked on the payer's
+    // business but must still show in the payee's own history.
     final matches = _mutableTransactions
-        .where((t) =>
-            t.businessId == businessId &&
-            (t.fromUserId == userId || t.toUserId == userId))
+        .where((t) => t.fromUserId == userId || t.toUserId == userId)
         .toList();
-        
+
     if (matches.isEmpty) {
-      // Dynamic Fallback: Map seed transactions to this user and businessId dynamically
-      return _mutableTransactions.map((t) {
-        return t.copyWith(
-          businessId: businessId,
-          fromUserId: t.fromUserId == 'usr_client_001' ? 'usr_client_001' : userId,
-          toUserId: t.toUserId == 'usr_owner_001' ? 'usr_owner_001' : userId,
-        );
-      }).toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Round 6: never clone seed money onto a user who never earned it.
+      return <TransactionModel>[];
     }
     return matches..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
@@ -80,6 +79,8 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     String? activityId,
     String? agreementId,
     String? notes,
+    String? paymentProvider,
+    String? externalRef,
   }) async {
     await simulateNetworkDelay();
 
@@ -98,7 +99,8 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
       toUserName: toUserName,
       activityId: activityId,
       agreementId: agreementId,
-      paymentProvider: 'manual',
+      paymentProvider: paymentProvider ?? 'manual',
+      externalRef: externalRef,
       notes: notes,
     );
 
@@ -160,37 +162,38 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     final matches = _mutableCommissions
         .where((c) => c.businessId == businessId)
         .toList();
-        
+
     if (matches.isEmpty) {
-      return _mutableCommissions.map((c) => c.copyWith(businessId: businessId)).toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Round 6: brand-new business has no commissions yet.
+      return <CommissionModel>[];
     }
     return matches..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   @override
   Future<List<CommissionModel>> getCommissionsForPartner(
-    String businessId,
-    String partnerId,
-  ) async {
+      String partnerId) async {
     await simulateNetworkDelay();
-    final matches = _mutableCommissions
-        .where((c) => c.businessId == businessId && c.partnerId == partnerId)
-        .toList();
-        
+    // Keyed by payee only: on a marketplace collab the debtor's business
+    // differs from the partner's, and the partner must still see what's
+    // owed to them (Phase 10: Supabase RLS keys the same way).
+    final matches =
+        _mutableCommissions.where((c) => c.partnerId == partnerId).toList();
+
     if (matches.isEmpty) {
-      // Dynamic Fallback: Map seed commissions to this partner dynamically
-      return _mutableCommissions
-          .map((c) => c.copyWith(businessId: businessId))
-          .where((c) => c.partnerId == partnerId || partnerId.startsWith('dev_'))
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // Round 6: no seed commissions mapped onto partners who never
+      // earned them — a fresh partner starts at $0.
+      return <CommissionModel>[];
     }
     return matches..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   @override
-  Future<CommissionModel> markCommissionPaid(String commissionId) async {
+  Future<CommissionModel> markCommissionPaid(
+    String commissionId, {
+    String? payerUserId,
+    String? payerName,
+  }) async {
     await simulateNetworkDelay();
 
     final index = _mutableCommissions.indexWhere((c) => c.id == commissionId);
@@ -216,8 +219,8 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
         status: 'completed',
         createdAt: DateTime.now(),
         description: 'Commission payout to ${commission.partnerName}',
-        fromUserId: 'usr_owner_001',
-        fromUserName: 'Alex Owner',
+        fromUserId: payerUserId,
+        fromUserName: payerName,
         toUserId: commission.partnerId,
         toUserName: commission.partnerName,
         commissionId: commissionId,

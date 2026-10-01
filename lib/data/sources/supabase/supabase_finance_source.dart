@@ -30,13 +30,13 @@ class SupabaseFinanceSource implements FinanceRepository {
 
   @override
   Future<List<TransactionModel>> getTransactionsForUser(
-    String businessId,
     String userId,
   ) async {
+    // Keyed by user only — a cross-tenant payout still belongs in the
+    // payee's own history (row-level access is enforced by RLS).
     final rows = await _db
         .from('transactions')
         .select()
-        .eq('business_id', businessId)
         .or('from_user_id.eq.$userId,to_user_id.eq.$userId')
         .order('created_at', ascending: false);
     return (rows as List)
@@ -70,6 +70,8 @@ class SupabaseFinanceSource implements FinanceRepository {
     String? activityId,
     String? agreementId,
     String? notes,
+    String? paymentProvider,
+    String? externalRef,
   }) async {
     final row = await _db.from('transactions').insert({
       'business_id': businessId,
@@ -85,6 +87,8 @@ class SupabaseFinanceSource implements FinanceRepository {
       if (activityId != null) 'activity_id': activityId,
       if (agreementId != null) 'agreement_id': agreementId,
       if (notes != null) 'notes': notes,
+      if (paymentProvider != null) 'payment_provider': paymentProvider,
+      if (externalRef != null) 'external_ref': externalRef,
     }).select().single();
 
     return TransactionModel.fromJson(row);
@@ -120,13 +124,12 @@ class SupabaseFinanceSource implements FinanceRepository {
 
   @override
   Future<List<CommissionModel>> getCommissionsForPartner(
-    String businessId,
-    String partnerId,
-  ) async {
+      String partnerId) async {
+    // Keyed by payee only (marketplace collabs span businesses; RLS
+    // still scopes rows to the caller).
     final rows = await _db
         .from('commissions')
         .select()
-        .eq('business_id', businessId)
         .eq('partner_id', partnerId)
         .order('created_at', ascending: false);
     return (rows as List)
@@ -135,7 +138,15 @@ class SupabaseFinanceSource implements FinanceRepository {
   }
 
   @override
-  Future<CommissionModel> markCommissionPaid(String commissionId) async {
+  Future<CommissionModel> markCommissionPaid(
+    String commissionId, {
+    String? payerUserId,
+    String? payerName,
+  }) async {
+    // The atomic SQL function owns the payout row (including its payer
+    // columns) — Phase 10: extend mark_commission_paid() to accept
+    // p_payer_user_id/p_payer_name so these named params can flow
+    // through; until then the RPC keeps its own bookkeeping.
     final row = await _db.rpc('mark_commission_paid', params: {
       'p_commission_id': commissionId,
     });

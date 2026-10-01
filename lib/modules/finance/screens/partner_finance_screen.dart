@@ -89,13 +89,19 @@ class _PartnerFinanceBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double totalEarnings = 0, pendingEarnings = 0;
+    // Total Earned = payout transactions that actually landed (status
+    // completed). Pending = unpaid commission RECORDS — money owed but
+    // not yet paid out, which has no transaction of its own yet (the
+    // old txn-status check always summed to 0 here).
+    double totalEarnings = 0;
     for (final txn in transactions) {
-      if (txn.type == 'commission') {
-        if (txn.status == 'completed') totalEarnings   += txn.amount as double;
-        if (txn.status == 'pending')   pendingEarnings += txn.amount as double;
+      if (txn.type == 'commission' && txn.status == 'completed') {
+        totalEarnings += txn.amount as double;
       }
     }
+    final pendingEarnings = (commissionsAsync.valueOrNull ?? [])
+        .where((c) => c.status == 'pending')
+        .fold<double>(0, (sum, c) => sum + c.amount);
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
@@ -129,12 +135,23 @@ class _PartnerFinanceBody extends StatelessWidget {
       loading: () => const LoadingIndicator(),
       error:   (_, __) => const FinanceEmptyState(message: 'Could not load deals.'),
       data: (agreements) {
-        final myAgreements = agreements.where((a) => a.partnerUserId == profile.userId).toList();
+        // Deals I'm a party to — on a marketplace collab my own copy
+        // lists ME on the owner side (the two copies swap the side
+        // labels), so filtering on partnerUserId alone hid my own deal.
+        final myAgreements = agreements
+            .where((a) =>
+                a.ownerUserId == profile.userId ||
+                a.partnerUserId == profile.userId)
+            .toList();
         if (myAgreements.isEmpty) return const FinanceEmptyState(message: 'No active deals.');
         return Column(children: myAgreements.map((agreement) {
           final earningsForDeal = transactions
               .where((t) => t.type == 'commission' && t.agreementId == agreement.id)
               .fold<double>(0, (sum, t) => sum + (t.amount as double));
+          final iAmPartnerSide = agreement.partnerUserId == profile.userId;
+          final myPct = iAmPartnerSide
+              ? agreement.partnerCommissionPct as double
+              : agreement.ownerCommissionPct as double;
           return Card(
             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Padding(padding: const EdgeInsets.all(AppSpacing.md),
@@ -142,7 +159,7 @@ class _PartnerFinanceBody extends StatelessWidget {
                 Text(agreement.categoryId as String, style: AppTextStyles.bodyMedium),
                 const SizedBox(height: AppSpacing.xs),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text('Your rate: ${(agreement.partnerCommissionPct as double).toStringAsFixed(1)}%',
+                  Text('Your rate: ${myPct.toStringAsFixed(1)}%',
                       style: AppTextStyles.labelSmall),
                   Text('Status: ${agreement.status}',
                       style: AppTextStyles.labelSmall.copyWith(

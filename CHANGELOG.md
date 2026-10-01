@@ -3,7 +3,40 @@
 A plain-English summary of everything fixed. You don't need to read the code
 to understand this — just what changed and why.
 
-## Latest — Round 5 fixes
+## Latest — Round 6 — production-like build
+
+1. **Dev shortcuts are gone for good.** The floating Quick Sign-In button,
+   the QA console screen, and the old "recognized test email" back-door
+   (any `owner@…` / `partner@…` / `staff@…` / `client@…` address signing
+   in without a real account) are deleted. Sign-in now behaves like a real
+   backend: unknown emails and wrong passwords are simply rejected, and
+   stale test sessions (`owner@test.com` and friends) can no longer
+   silently restore a seeded account.
+2. **Fresh accounts start empty — no borrowed fake data.** A brand-new
+   business used to inherit cloned seed transactions, commissions, and a
+   pre-filled Network roster from demo data. New sign-ups now start with
+   an empty ledger ("No transactions yet") and an empty Network — what a
+   real new account would see. `Mark Paid` also refreshes revenue and
+   commission numbers everywhere immediately instead of leaving stale
+   figures on screen.
+3. **Failed sign-in shows its error again.** A failed login could bounce
+   through `/loading` and land on the front-door page with the error
+   message rendered nowhere. The login and marketing-landing routes now
+   stay reachable so the inline error shows where the user actually is.
+4. **Manual test docs consolidated.** The three older checklists
+   (`TESTING_CHECKLIST.md`, `TESTING_CHECKLIST_2.md`,
+   `TEST_EXECUTION_PLAN.md`) are deleted; everything manual lives in one
+   file: `MANUAL_TEST_CHECKLIST.md` (production-style — you sign up fresh
+   accounts yourself).
+5. **Verified end-to-end.** The automated suite passes 50 of 52 checks
+   (the 2 failures are the documented invite→propose dead-end, kept
+   honest on purpose), and the new end-to-end "game" run — owner signs
+   up, invites an associate, they agree in chat, a second studio joins
+   the marketplace, a collab gets approved, money moves, staff and
+   client join — passes **18/18**. `flutter analyze` clean; 159/159 unit
+   tests pass.
+
+## Round 5 fixes
 
 1. **Session restore no longer kicks you out after a fast sign-in.** On web,
    a background "restore previous session" could land right after you signed

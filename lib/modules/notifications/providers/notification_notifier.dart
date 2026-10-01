@@ -45,7 +45,8 @@ final notificationUnreadCountProvider = Provider<int>(
             .length ??
         0;
   },
-  // See lib/dev_tools/qa_console_screen.dart — same Riverpod scoping rule.
+  // Declared so Riverpod's override-scoping check passes when
+  // notificationNotifierProvider itself is overridden (e.g. in tests).
   dependencies: [notificationNotifierProvider],
 );
 

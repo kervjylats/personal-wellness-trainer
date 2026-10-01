@@ -11,37 +11,14 @@ import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/data/models/commission_model.dart';
 import 'package:personal_wellness_trainer/data/models/transaction_model.dart';
 import 'package:personal_wellness_trainer/data/models/revenue_summary_model.dart';
-import 'package:personal_wellness_trainer/data/repositories/agreements_repository.dart';
-import 'package:personal_wellness_trainer/data/sources/mock/mock_agreements_source.dart';
-import 'package:personal_wellness_trainer/data/sources/supabase/supabase_agreements_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
-import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
+import 'package:personal_wellness_trainer/modules/agreements/providers/agreements_notifier.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/commission_notifier.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/revenue_summary_provider.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/transaction_notifier.dart';
 import 'package:personal_wellness_trainer/modules/finance/widgets/finance_widgets.dart';
-
-// ── Private deals provider ────────────────────────────────────────────────────
-
-final _financeAgreementsRepoProvider = Provider<AgreementsRepository>((ref) {
-  if (DataConfig.useMockData) return MockAgreementsSource();
-  return SupabaseAgreementsSource();
-});
-
-final _financeDealsProvider =
-    FutureProvider.autoDispose<List<AgreementModel>>(
-  (ref) async {
-    final auth = ref.watch(authNotifierProvider);
-    if (auth is! AuthAuthenticated) return [];
-    final repo = ref.read(_financeAgreementsRepoProvider);
-    return repo.getAgreements(auth.profile.businessId);
-  },
-  // See _activePartnersProvider in propose_agreement_screen.dart for why
-  // this is required — same Riverpod scoping rule, same QA Console reason.
-  dependencies: [authNotifierProvider],
-);
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +29,12 @@ class OwnerFinanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsync  = ref.watch(transactionNotifierProvider);
     final commissionsAsync   = ref.watch(commissionNotifierProvider);
-    final dealsAsync         = ref.watch(_financeDealsProvider);
+    // Live agreements state, exactly like partner_finance_screen: the
+    // old private _financeDealsProvider ran once per shell mount and was
+    // never invalidated when an agreement was approved — Revenue showed
+    // stale "No active deals." (Round 6 probe). The notifier is the same
+    // source of truth the dashboard counts use, so they can never disagree.
+    final dealsAsync         = ref.watch(agreementsNotifierProvider);
     final summary            = ref.watch(revenueSummaryProvider);
     final jobConfig          = ref.watch(activeJobConfigProvider);
     final currency           = jobConfig.payment.currencyDefault;
@@ -62,7 +44,7 @@ class OwnerFinanceScreen extends ConsumerWidget {
     Future<void> onRefresh() async {
       ref.invalidate(transactionNotifierProvider);
       ref.invalidate(commissionNotifierProvider);
-      ref.invalidate(_financeDealsProvider);
+      ref.invalidate(agreementsNotifierProvider);
     }
 
     return Scaffold(
@@ -162,22 +144,41 @@ class _FinanceBody extends StatelessWidget {
       ...transactions.map((txn) => _TransactionTile(transaction: txn, currency: currency)),
   ];
 
-  List<Widget> _commissionsSection() => [
-    const _SectionHeader(title: 'Commission'),
-    const SizedBox(height: AppSpacing.sm),
-    commissionsAsync.when(
-      loading: () => const LoadingIndicator(),
-      error: (_, __) => const FinanceEmptyState(message: 'Could not load commissions.'),
-      data: (commissions) => commissions.isEmpty
-          ? const FinanceEmptyState(message: 'No commissions yet.')
-          : Column(children: commissions.map((c) => _CommissionTile(
-                commission: c, currency: currency,
-                onMarkPaid: c.status == 'pending'
-                    ? () => ref.read(commissionNotifierProvider.notifier).markPaid(c.id)
-                    : null,
-              )).toList()),
-    ),
-  ];
+  List<Widget> _commissionsSection() {
+    final auth = ref.watch(authNotifierProvider);
+    final myBusinessId =
+        auth is AuthAuthenticated ? auth.profile.businessId : null;
+    return [
+      const _SectionHeader(title: 'Commission'),
+      const SizedBox(height: AppSpacing.sm),
+      commissionsAsync.when(
+        loading: () => const LoadingIndicator(),
+        error: (_, __) => const FinanceEmptyState(message: 'Could not load commissions.'),
+        data: (commissions) => commissions.isEmpty
+            ? const FinanceEmptyState(message: 'No commissions yet.')
+            : Column(children: commissions.map((c) => _CommissionTile(
+                  commission: c, currency: currency,
+                  // Mark Paid only on rows MY business owes — a row
+                  // owed to me (marketplace payee) isn't mine to close.
+                  // The payout txn lands on MY ledger too, so refresh
+                  // transactions afterwards (markPaid only invalidates
+                  // the commissions provider).
+                  onMarkPaid: c.status == 'pending' &&
+                          myBusinessId != null &&
+                          c.businessId == myBusinessId
+                      ? () async {
+                          final ok = await ref
+                              .read(commissionNotifierProvider.notifier)
+                              .markPaid(c.id);
+                          if (ok) {
+                            ref.invalidate(transactionNotifierProvider);
+                          }
+                        }
+                      : null,
+                )).toList()),
+      ),
+    ];
+  }
 
   List<Widget> _activeDealsSection() => [
     const _SectionHeader(title: 'Deals'),

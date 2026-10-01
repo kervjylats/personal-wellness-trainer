@@ -47,7 +47,7 @@ final _activePartnersProvider =
   // Riverpod requires any provider whose body reads another provider to
   // declare that as a dependency, so the override correctly cascades
   // when this provider is used somewhere that overrides authNotifierProvider
-  // (e.g. lib/dev_tools/qa_console_screen.dart's per-role panels). Without
+  // (e.g. tests). Without
   // this, Riverpod throws: "Tried to read Provider<...> from a place where
   // one of its dependencies were overridden but the provider is not."
   dependencies: [authNotifierProvider],

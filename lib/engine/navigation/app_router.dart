@@ -109,8 +109,16 @@ class _RouterNotifier extends ChangeNotifier {
     switch (authState) {
       case AuthInitial():
       case AuthLoading():
+        // The login and marketing-landing forms have their own inline
+        // loading UI (button spinner), so they must NOT be bounced to
+        // /loading: doing so made a FAILED sign-in land on /loading first
+        // and then — because /loading isn't whitelisted for
+        // AuthUnauthenticated below — silently drop the user on the front
+        // door with the error message rendered nowhere (Round 6 probe).
         if (location == RouteNames.loadingPath ||
-            location == RouteNames.rootPath) {
+            location == RouteNames.rootPath ||
+            location == RouteNames.loginPath ||
+            location == RouteNames.marketingLandingPath) {
           return null;
         }
         return RouteNames.loadingPath;

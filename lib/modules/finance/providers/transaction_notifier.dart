@@ -2,11 +2,14 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/utils/logger.dart';
+import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/data/models/catalog_item_model.dart';
 import 'package:personal_wellness_trainer/data/models/transaction_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/finance_repository.dart';
+import 'package:personal_wellness_trainer/data/sources/mock/mock_auth_source.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
+import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/commission_notifier.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/finance_action_error_provider.dart';
@@ -35,9 +38,20 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
 
       AppLogger.debug('TransactionNotifier: loading for ${role.value}', tag: _tag);
 
-      if (role.isOwner)   return await _repo.getTransactions(profile.businessId);
-      if (role.isPartner) return await _repo.getTransactionsForUser(profile.businessId, profile.userId);
-      if (role.isClient)  return await _repo.getTransactionsForUser(profile.businessId, profile.userId);
+      if (role.isOwner) {
+        // My business' ledger merged with txns keyed to me personally —
+        // a marketplace payout is written on the payer's businessId but
+        // toUserId = me, so the payee owner must still see it land.
+        final own = await _repo.getTransactions(profile.businessId);
+        final mine = await _repo.getTransactionsForUser(profile.userId);
+        final merged = {
+          for (final t in [...own, ...mine]) t.id: t,
+        }.values.toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return merged;
+      }
+      if (role.isPartner) return await _repo.getTransactionsForUser(profile.userId);
+      if (role.isClient)  return await _repo.getTransactionsForUser(profile.userId);
       return [];
     } catch (e, st) {
       AppLogger.error(
@@ -172,6 +186,118 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
           tag: _tag, error: e, stackTrace: st);
       ref.read(financeActionErrorProvider.notifier).state =
           'Could not complete the purchase. Please try again.';
+      return false;
+    }
+  }
+
+  /// Records a client payment against an ACTIVE agreement and books the
+  /// counterparty's share as a pending commission — the mock-mode mirror
+  /// of a production charge → split → payout flow (the payout leg is the
+  /// existing "Mark paid" action on the owner's finance screen).
+  ///
+  /// Each side books into its OWN ledger: whoever records the payment
+  /// keeps their share of it and owes the other theirs. Which share that
+  /// is comes from THIS side's copy of the agreement — ownerCommissionPct
+  /// when the signed-in user is the owner side, partnerCommissionPct
+  /// otherwise — so both copies (they swap the percentages when the
+  /// collab is formed) always agree on who gets what.
+  ///
+  /// The counterparty display name resolves through the signed-up
+  /// profile store in mock mode; Phase 10 swaps that lookup for a
+  /// profiles-table fetch behind the repository pattern.
+  Future<bool> recordAgreementPayment({
+    required AgreementModel agreement,
+    required double amount,
+    required String currencySymbol,
+    required String description,
+    required String payerLabel,
+    required String method, // 'card' | 'bank' | 'cash'
+  }) async {
+    final auth = ref.read(authNotifierProvider);
+    if (auth is! AuthAuthenticated) {
+      return false;
+    }
+    if (!agreement.isActive || amount <= 0) {
+      return false;
+    }
+
+    final profile = auth.profile;
+    final iAmOwnerSide = profile.userId == agreement.ownerUserId;
+    final myKeepPct = iAmOwnerSide
+        ? agreement.ownerCommissionPct
+        : agreement.partnerCommissionPct;
+    final theirKeepPct = iAmOwnerSide
+        ? agreement.partnerCommissionPct
+        : agreement.ownerCommissionPct;
+    final otherUserId =
+        iAmOwnerSide ? agreement.partnerUserId : agreement.ownerUserId;
+
+    String otherName = 'Collab partner';
+    if (DataConfig.useMockData) {
+      final other = await MockAuthSource.getProfileByUserId(otherUserId);
+      otherName = other?.businessName ?? other?.displayName ?? otherName;
+    }
+
+    final String paymentProvider;
+    final String? externalRef;
+    switch (method) {
+      case 'card':
+        paymentProvider = 'card';
+        externalRef = 'py_${DateTime.now().millisecondsSinceEpoch}';
+      case 'bank':
+        paymentProvider = 'bank';
+        externalRef = 'trf_${DateTime.now().millisecondsSinceEpoch}';
+      default:
+        paymentProvider = 'cash';
+        externalRef = null;
+    }
+
+    final myName = profile.businessName ?? profile.displayName;
+    ref.read(financeActionErrorProvider.notifier).state = null;
+    try {
+      await _repo.recordTransaction(
+        businessId: profile.businessId,
+        amount: amount,
+        currencySymbol: currencySymbol,
+        type: 'payment',
+        description: description,
+        fromUserName: payerLabel,
+        toUserName: myName,
+        agreementId: agreement.id,
+        notes:
+            'Split: ${myKeepPct.toStringAsFixed(0)}% $myName / '
+            '${theirKeepPct.toStringAsFixed(0)}% $otherName',
+        paymentProvider: paymentProvider,
+        externalRef: externalRef,
+      );
+
+      if (theirKeepPct > 0) {
+        await _repo.recordCommission(
+          businessId: profile.businessId,
+          agreementId: agreement.id,
+          partnerId: otherUserId,
+          partnerName: otherName,
+          amount: amount * theirKeepPct / 100,
+          currencySymbol: currencySymbol,
+          rate: theirKeepPct,
+          description:
+              '${theirKeepPct.toStringAsFixed(0)}% share on $description',
+        );
+      }
+
+      ref.invalidateSelf();
+      ref.invalidate(commissionNotifierProvider);
+      AppLogger.info(
+        'recordAgreementPayment: $amount $currencySymbol on ${agreement.id} '
+        '($paymentProvider${externalRef != null ? ' $externalRef' : ''})',
+        tag: _tag,
+      );
+      return true;
+    } catch (e, st) {
+      AppLogger.error('TransactionNotifier: recordAgreementPayment failed',
+          tag: _tag, error: e, stackTrace: st);
+      ref.read(financeActionErrorProvider.notifier).state =
+          'Could not record the payment. Please try again.';
       return false;
     }
   }

@@ -126,9 +126,8 @@ final activeJobConfigProvider = Provider<IndustryConfig>(
 
   return jobDef.toIndustryConfig(platformBase);
   },
-  // See lib/dev_tools/qa_console_screen.dart — this provider reads
-  // authNotifierProvider, so it must declare that dependency for
-  // Riverpod's override-scoping check to pass wherever authNotifierProvider
-  // is overridden (the QA Console's 4 role panels).
+  // This provider reads authNotifierProvider, so it must declare that
+  // dependency for Riverpod's override-scoping check to pass wherever
+  // authNotifierProvider is overridden (e.g. in tests).
   dependencies: [authNotifierProvider],
 );

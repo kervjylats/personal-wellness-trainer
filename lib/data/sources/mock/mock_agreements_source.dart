@@ -115,7 +115,9 @@ class MockAgreementsSource with MockSourceMixin implements AgreementsRepository 
   }) {
     final index = _store.indexWhere(
         (a) => a.id == agreementId && a.businessId == businessId);
-    if (index == -1) throw Exception('Agreement $agreementId not found');
+    if (index == -1) {
+      throw Exception('Agreement $agreementId not found');
+    }
     final now = DateTime.now();
     final updated = _store[index].copyWith(
       status: status,

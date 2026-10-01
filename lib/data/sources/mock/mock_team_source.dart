@@ -101,16 +101,12 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
     
     final matches = _store.where((m) => m.businessId == businessId && (role == null || m.role == role)).toList();
     if (matches.isEmpty) {
-      // Dynamic Fallback: Clone seed partners & staff to the active businessId.
-      // NOTE: with ensureOwnerRow() now called from signUp(), completeOnboarding(),
-      // and devQuickSignIn(), every real Owner path leaves at least one genuine
-      // match (their own row) before getMembers() is ever called — so this
-      // fallback should no longer trigger in normal use. Left in place as a
-      // safety net rather than removed.
-      return _store
-          .map((m) => m.copyWith(businessId: businessId))
-          .where((m) => role == null || m.role == role)
-          .toList();
+      // Round 6: no more "clone the seed roster onto whatever business
+      // asked" safety net — a brand-new (or post-refresh) business must
+      // start with an empty Network, exactly like a real one. The
+      // ensureOwnerRow() call on every sign-up/onboarding path already
+      // guarantees the owner's own row exists before this runs.
+      return <TeamMemberModel>[];
     }
     return matches;
   }

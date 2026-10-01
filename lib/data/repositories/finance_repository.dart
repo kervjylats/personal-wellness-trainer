@@ -16,17 +16,19 @@ abstract class FinanceRepository {
   /// Returns all transactions for a business, newest first.
   Future<List<TransactionModel>> getTransactions(String businessId);
 
-  /// Returns transactions for a specific user (partner earnings / client payments).
-  Future<List<TransactionModel>> getTransactionsForUser(
-    String businessId,
-    String userId,
-  );
+  /// Returns transactions where this user is a party (partner earnings /
+  /// client payments). Keyed by user, not business — a cross-tenant
+  /// payout still belongs in the payee's own history.
+  Future<List<TransactionModel>> getTransactionsForUser(String userId);
 
   /// Returns the single transaction with the given ID.
   /// Returns null if not found.
   Future<TransactionModel?> getTransaction(String transactionId);
 
   /// Records a new manual transaction (owner action).
+  /// [paymentProvider]/[externalRef] mimic a real payment processor's
+  /// receipt ('card' → 'py_...', 'bank' → 'trf_...'); null keeps the
+  /// default 'manual' bookkeeping entry.
   /// Returns the created [TransactionModel].
   Future<TransactionModel> recordTransaction({
     required String businessId,
@@ -41,6 +43,8 @@ abstract class FinanceRepository {
     String? activityId,
     String? agreementId,   // NEW
     String? notes,
+    String? paymentProvider,
+    String? externalRef,
   });
 
   /// Updates the status of an existing transaction.
@@ -54,14 +58,20 @@ abstract class FinanceRepository {
   /// Returns all commission records for a business (owner view).
   Future<List<CommissionModel>> getCommissions(String businessId);
 
-  /// Returns commission records for a specific partner (partner view).
-  Future<List<CommissionModel>> getCommissionsForPartner(
-    String businessId,
-    String partnerId,
-  );
+  /// Returns commission records where this user is the payee (partner
+  /// view). Keyed by [partnerId] only — a marketplace partner belongs to
+  /// a different business than the debtor, and money owed to *you* must
+  /// be visible to you regardless of whose ledger books it.
+  Future<List<CommissionModel>> getCommissionsForPartner(String partnerId);
 
-  /// Marks a commission as paid and creates the corresponding transaction.
-  Future<CommissionModel> markCommissionPaid(String commissionId);
+  /// Marks a commission as paid and creates the corresponding payout
+  /// transaction. [payerUserId]/[payerName] identify who sent the money
+  /// (falls back to null on older records).
+  Future<CommissionModel> markCommissionPaid(
+    String commissionId, {
+    String? payerUserId,
+    String? payerName,
+  });
 
   /// Records a new pending commission — the real calculation (rate ×
   /// amount, using a specific agreement's actual terms) is the caller's

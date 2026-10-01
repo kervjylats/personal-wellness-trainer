@@ -8,10 +8,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/widgets/dashboard_count_chip.dart';
+import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
 import 'package:personal_wellness_trainer/engine/providers/dashboard_refresh_bus.dart';
 import 'package:personal_wellness_trainer/modules/agreements/providers/agreements_notifier.dart';
@@ -62,6 +65,34 @@ Widget _cardShell({
   );
 }
 
+// ── Shared: tappable count → agreement detail ─────────────────────────────────
+//
+// AgreementDetailScreen (the only screen with Approve/Decline buttons) had NO
+// entry point anywhere in the app — Round 6 probe: the sender's side of a
+// marketplace Collab lands in 'proposed' with no way to open it, so pending
+// agreements could never be approved. A non-empty count chip now opens the
+// first matching agreement's detail (multiple pendings open the oldest one).
+
+Widget _tappableCount({
+  required BuildContext context,
+  required String routeName,
+  required AgreementModel? target,
+  required Widget child,
+}) {
+  if (target == null) return child;
+  return InkWell(
+    onTap: () => context.pushNamed(routeName, extra: target),
+    borderRadius: BorderRadius.circular(AppSpacing.sm),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      child: child,
+    ),
+  );
+}
+
 // ── Owner — deal_count slot ───────────────────────────────────────────────────
 
 class OwnerDealCountSlot extends ConsumerWidget {
@@ -87,13 +118,30 @@ class OwnerDealCountSlot extends ConsumerWidget {
           style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey600),
         ),
         data: (agreements) {
-          final active  = agreements.where((a) => a.isActive).length;
-          final pending = agreements.where((a) => a.isPending).length;
+          final active  = agreements.where((a) => a.isActive).toList();
+          final pending = agreements.where((a) => a.isPending).toList();
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              DashboardCountChip(count: active,  label: 'Active'),
-              DashboardCountChip(count: pending, label: 'Pending', color: AppColors.warning),
+              _tappableCount(
+                context: context,
+                routeName: RouteNames.ownerAgreementDetail,
+                target: active.isEmpty ? null : active.first,
+                child: DashboardCountChip(
+                  count: active.length,
+                  label: 'Active',
+                ),
+              ),
+              _tappableCount(
+                context: context,
+                routeName: RouteNames.ownerAgreementDetail,
+                target: pending.isEmpty ? null : pending.first,
+                child: DashboardCountChip(
+                  count: pending.length,
+                  label: 'Pending',
+                  color: AppColors.warning,
+                ),
+              ),
             ],
           );
         },
@@ -141,14 +189,32 @@ class PartnerDealsSlot extends ConsumerWidget {
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey600),
             );
           }
-          final active  = agreements.where((a) => a.isActive).length;
-          final pending = agreements.where((a) => a.isPending).length;
+          final active  = agreements.where((a) => a.isActive).toList();
+          final pending = agreements.where((a) => a.isPending).toList();
           return Row(
             children: [
-              _StatusPill(count: active,  label: 'Active',  color: AppColors.success),
+              _tappableCount(
+                context: context,
+                routeName: RouteNames.partnerAgreementDetail,
+                target: active.isEmpty ? null : active.first,
+                child: _StatusPill(
+                  count: active.length,
+                  label: 'Active',
+                  color: AppColors.success,
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
-              if (pending > 0)
-                _StatusPill(count: pending, label: 'Pending', color: AppColors.warning),
+              if (pending.isNotEmpty)
+                _tappableCount(
+                  context: context,
+                  routeName: RouteNames.partnerAgreementDetail,
+                  target: pending.first,
+                  child: _StatusPill(
+                    count: pending.length,
+                    label: 'Pending',
+                    color: AppColors.warning,
+                  ),
+                ),
             ],
           );
         },

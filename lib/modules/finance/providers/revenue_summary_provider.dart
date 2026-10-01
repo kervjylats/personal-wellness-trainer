@@ -24,8 +24,8 @@ final revenueSummaryProvider = Provider<RevenueSummaryModel>(
     );
   },
   // transactionNotifierProvider and agreementsNotifierProvider both watch
-  // authNotifierProvider — see lib/dev_tools/qa_console_screen.dart for
-  // why this matters. configProvider is NOT listed: it's never overridden
+  // authNotifierProvider, so they must be declared here (Riverpod
+  // override-scoping). configProvider is NOT listed: it's never overridden
   // anywhere, so Riverpod doesn't require declaring it.
   dependencies: [transactionNotifierProvider, agreementsNotifierProvider],
 );

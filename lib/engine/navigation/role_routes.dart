@@ -47,12 +47,11 @@ import 'package:personal_wellness_trainer/modules/team/screens/member_profile_sc
 
 // ── Reusable per-role route tables ───────────────────────────────────────────
 //
-// Extracted so the SAME route definitions (and ALL their sub-routes — every
-// Create/Detail/screen each role can push to) are used both by the main app's
-// single global router AND by the QA Console (lib/dev_tools/qa_console_screen.dart),
-// which gives each of the 4 role panels its own independent, isolated GoRouter
-// instance. Single source of truth — editing a route here updates both places,
-// nothing can drift out of sync between "real" navigation and the QA Console.
+// Extracted as the single source of truth for role navigation: the SAME
+// route definitions (and ALL their sub-routes — every Create/Detail/screen
+// each role can push to) feed the main app's single global router, so a
+// route edited here updates every role consistently and nothing can drift
+// out of sync across the role shells.
 
 List<RouteBase> ownerRoutes() => [
       GoRoute(

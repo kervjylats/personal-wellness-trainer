@@ -425,29 +425,35 @@ class _ReceivedRequestTile extends ConsumerWidget {
   }
 
   Future<void> _accept(BuildContext context, WidgetRef ref) async {
-    final accepted = await ref
-        .read(marketplaceNotifierProvider.notifier)
-        .acceptRequest(request.id);
-    if (accepted == null || !context.mounted) return;
+    // This tile unmounts the moment acceptRequest() drops it from the
+    // pending list, which kills BOTH `context` and `ref`. Capture every
+    // widget-bound handle up front (navigator/messenger/provider
+    // notifiers), otherwise finalization throws
+    // "Cannot use ref after the widget was disposed" and the Collab is
+    // never created (Round 6 probe).
+    final messenger = ScaffoldMessenger.of(context);
+    final dialogContext = Navigator.of(context, rootNavigator: true).context;
+    final marketplace = ref.read(marketplaceNotifierProvider.notifier);
+    final agreements = ref.read(agreementsNotifierProvider.notifier);
+
+    final accepted = await marketplace.acceptRequest(request.id);
+    if (accepted == null || !dialogContext.mounted) return;
 
     // Set commission rates and finalize the partnership on both sides.
     final rates = await showDialog<(double, double)>(
-      context: context,
+      context: dialogContext,
       barrierDismissible: false,
       builder: (_) => _ConfigureCommissionDialog(request: accepted),
     );
-    if (rates == null || !context.mounted) return;
+    if (rates == null) return;
 
-    final ok = await ref
-        .read(agreementsNotifierProvider.notifier)
-        .createMutualAgreementFromRequest(
-          request: accepted,
-          ownerCommissionPct: rates.$1,
-          partnerCommissionPct: rates.$2,
-        );
-    if (!context.mounted) return;
+    final ok = await agreements.createMutualAgreementFromRequest(
+      request: accepted,
+      ownerCommissionPct: rates.$1,
+      partnerCommissionPct: rates.$2,
+    );
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           ok

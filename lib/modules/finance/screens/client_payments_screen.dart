@@ -36,7 +36,7 @@ class ClientPaymentsScreen extends ConsumerWidget {
     final financeLabel = config?.industry.terminology.finance ?? 'Finance';
 
     final future = resolveFinanceRepository()
-        .getTransactionsForUser(profile.businessId, profile.userId);
+        .getTransactionsForUser(profile.userId);
 
     return Scaffold(
       appBar: AppBar(

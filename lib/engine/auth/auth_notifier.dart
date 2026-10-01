@@ -139,6 +139,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final updatedProfile = current.profile.copyWith(
         businessName: businessName,
         selectedCategory: category,
+        categoryId: category,
         primaryColor: primaryColorHex,
         jobId: jobId ?? category,
       );
@@ -496,33 +497,5 @@ class AuthNotifier extends Notifier<AuthState> {
     }
     if (message.isNotEmpty) return message;
     return 'Sign-in failed. Please check your details and try again.';
-  }
-}
-/// Always starts fully unauthenticated, ignoring any persisted mock
-/// session (SharedPreferences' 'ae_mock_session_email') that a normal
-/// sign-in elsewhere in the same browser tab may have left behind.
-///
-/// Used by the QA Console (lib/dev_tools/qa_console_screen.dart) for the
-/// Partner / Staff / Client panels, which are meant to start as a
-/// genuinely fresh, unjoined person — arriving at the real sign-in
-/// screen and joining via a real invite link generated from the Owner
-/// panel, rather than jumping straight to a pre-existing mock account.
-///
-/// Defined in this file (not qa_console_screen.dart) specifically so it
-/// can access the inherited private `_repository` field and
-/// `_resolveRepository()` method — both are file-private in Dart (an
-/// underscore-prefixed name is scoped to its OWN file, not just its own
-/// class), so a subclass living in a different file cannot reach them.
-///
-/// Everything else is inherited unchanged: real signIn(), real signUp(),
-/// real completeInviteJoin() all work normally here. Only the STARTING
-/// state is forced to unauthenticated.
-class QaFreshAuthNotifier extends AuthNotifier {
-  @override
-  AuthState build() {
-    _repository = _resolveRepository();
-    _teamRepository = _resolveTeamRepository();
-    _paymentGateway = _resolvePaymentGateway();
-    return const AuthUnauthenticated();
   }
 }

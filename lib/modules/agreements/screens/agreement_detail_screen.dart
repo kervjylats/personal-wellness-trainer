@@ -9,7 +9,9 @@ import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/utils/formatters.dart';
 import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
+import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
 import 'package:personal_wellness_trainer/modules/agreements/providers/agreements_notifier.dart';
+import 'package:personal_wellness_trainer/modules/finance/providers/transaction_notifier.dart';
 
 class AgreementDetailScreen extends ConsumerWidget {
   const AgreementDetailScreen({super.key, required this.agreement});
@@ -91,13 +93,25 @@ class _AgreementActionsState extends ConsumerState<_AgreementActions> {
       ]);
     }
     if (a.status == 'active') {
-      return SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          onPressed: _busy ? null : () => _end(context),
-          style: OutlinedButton.styleFrom(foregroundColor: AppColors.error, side: const BorderSide(color: AppColors.error)),
-          child: const Text('End Agreement'),
-        ),
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : () => _recordPayment(context),
+              child: const Text('Record payment'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => _end(context),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.error, side: const BorderSide(color: AppColors.error)),
+              child: const Text('End Agreement'),
+            ),
+          ),
+        ],
       );
     }
     return const SizedBox.shrink();
@@ -141,6 +155,45 @@ class _AgreementActionsState extends ConsumerState<_AgreementActions> {
       () => ref
           .read(agreementsNotifierProvider.notifier)
           .endAgreement(widget.agreement.id),
+    );
+  }
+
+  /// Charge → split → (later, Mark paid on the finance screen) — the
+  /// owner-side entry point for the mock payment flow. Stays on this
+  /// screen on success (unlike _runAction, which pops).
+  Future<void> _recordPayment(BuildContext context) async {
+    final jobConfig = ref.read(activeJobConfigProvider);
+    // Captured before the first await so the snackbar never touches a
+    // context across an async gap (use_build_context_synchronously).
+    final messenger = ScaffoldMessenger.of(context);
+    final form = await showDialog<_PaymentForm>(
+      context: context,
+      builder: (_) => _RecordPaymentDialog(
+        currency: jobConfig.payment.currencyDefault,
+      ),
+    );
+    if (form == null || !mounted) return;
+
+    setState(() => _busy = true);
+    final ok =
+        await ref.read(transactionNotifierProvider.notifier).recordAgreementPayment(
+              agreement: widget.agreement,
+              amount: form.amount,
+              currencySymbol: jobConfig.payment.currencyDefault,
+              description: form.description,
+              payerLabel: form.payer,
+              method: form.method,
+            );
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(ok
+            ? 'Payment recorded — the split is now on both ledgers.'
+            : 'Could not record the payment. Please try again.'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -212,4 +265,133 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) => Text(title, style: AppTextStyles.titleSmall);
+}
+
+// ── Record payment dialog ─────────────────────────────────────────────────────
+
+class _PaymentForm {
+  const _PaymentForm({
+    required this.amount,
+    required this.description,
+    required this.payer,
+    required this.method,
+  });
+  final double amount;
+  final String description;
+  final String payer;
+  final String method; // 'card' | 'bank' | 'cash'
+}
+
+class _RecordPaymentDialog extends StatefulWidget {
+  const _RecordPaymentDialog({required this.currency});
+  final String currency;
+
+  @override
+  State<_RecordPaymentDialog> createState() => _RecordPaymentDialogState();
+}
+
+class _RecordPaymentDialogState extends State<_RecordPaymentDialog> {
+  final _amount = TextEditingController();
+  final _description = TextEditingController(text: 'Session payment');
+  final _payer = TextEditingController(text: 'Client');
+  String _method = 'card';
+  String? _amountError;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _description.dispose();
+    _payer.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final amount = double.tryParse(_amount.text.trim());
+    if (amount == null || amount <= 0) {
+      setState(() => _amountError = 'Enter an amount greater than 0');
+      return;
+    }
+    Navigator.of(context).pop(_PaymentForm(
+      amount: amount,
+      description: _description.text.trim().isEmpty
+          ? 'Payment'
+          : _description.text.trim(),
+      payer: _payer.text.trim().isEmpty ? 'Client' : _payer.text.trim(),
+      method: _method,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Record payment'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _amount,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Amount',
+                hintText: 'e.g. 120.00',
+                prefixText: '${widget.currency} ',
+                errorText: _amountError,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _description,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _payer,
+              decoration: const InputDecoration(labelText: 'Payer name'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Payment method',
+                  style: AppTextStyles.labelSmall
+                      .copyWith(color: AppColors.grey600)),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.xs,
+              children: [
+                ChoiceChip(
+                  label: const Text('Card •••• 4242'),
+                  selected: _method == 'card',
+                  onSelected: (_) => setState(() => _method = 'card'),
+                ),
+                ChoiceChip(
+                  label: const Text('Bank transfer'),
+                  selected: _method == 'bank',
+                  onSelected: (_) => setState(() => _method = 'bank'),
+                ),
+                ChoiceChip(
+                  label: const Text('Cash'),
+                  selected: _method == 'cash',
+                  onSelected: (_) => setState(() => _method = 'cash'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Confirm Payment'),
+        ),
+      ],
+    );
+  }
 }
