@@ -9,6 +9,7 @@ import 'package:personal_wellness_trainer/core/utils/validators.dart';
 import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/job_definition.dart';
 import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
@@ -49,19 +50,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_selectedJob == null) return;
     setState(() => _isSaving = true);
     final primaryColorHex = _selectedJob!.primaryColor;
+    // Tagline, description and bio are now actually handed to the notifier.
+    // They used to be collected by the form and then dropped on the floor:
+    // completeOnboarding() took only 4 values, so none of these three ever
+    // reached the profile.
     final ok = await ref.read(authNotifierProvider.notifier).completeOnboarding(
           businessName: _businessNameController.text.trim(),
           category: _selectedJob!.id,
           primaryColorHex: primaryColorHex,
           jobId: _selectedJob!.id,
+          businessTagline: _taglineController.text,
+          businessDescription: _descriptionController.text,
+          ownerBio: _bioController.text,
         );
     if (!mounted) return;
 
     if (ok) {
-      if (_bioController.text.isNotEmpty) {
-        ref.read(authNotifierProvider.notifier).updateProfile(
-              displayName: _businessNameController.text.trim(),
-            );
+      // The bio previously overwrote displayName with the BUSINESS name —
+      // so an Owner named "Jim" who typed a personal bio ended up renamed
+      // to his business's name. The bio is persisted via completeOnboarding
+      // now; only the display name is touched here, and only when the Owner
+      // hasn't already set a sensible one.
+      final current = ref.read(authNotifierProvider);
+      if (current is AuthAuthenticated &&
+          current.profile.displayName.trim().isEmpty) {
+        ref
+            .read(authNotifierProvider.notifier)
+            .updateProfile(displayName: _businessNameController.text.trim());
       }
       context.goNamed(RouteNames.ownerShell);
     } else {

@@ -45,6 +45,10 @@ class UserProfile {
     this.partnersEnabled,
     this.marketplaceEnabled,
     this.agreementsEnabled,
+    // Owner marketing copy — collected in onboarding, previously discarded
+    this.businessTagline,
+    this.businessDescription,
+    this.ownerBio,
     // Partner fields
     this.categoryId,
     this.agreementStatus,
@@ -80,6 +84,18 @@ class UserProfile {
   // ── Owner-Only Fields ─────────────────────────────────────────────────────────
   final String? businessName;
   final String? businessLogoUrl;
+
+  /// One-line pitch for the business, e.g. "Pilates with purpose". Owner's
+  /// own words, collected during onboarding and displayed on marketplace
+  /// cards and (once built) a business's public page.
+  final String? businessTagline;
+
+  /// Longer "about this business" copy. Same origin as [businessTagline].
+  final String? businessDescription;
+
+  /// The OWNER's personal bio (as opposed to the business description) —
+  /// collected on onboarding's last step.
+  final String? ownerBio;
 
   /// Hex color string from config, e.g. '#2471A3'.
   /// The engine reads this to override the app's primary color per business.
@@ -163,6 +179,9 @@ class UserProfile {
       partnersEnabled: json['partners_enabled'] as bool?,
       marketplaceEnabled: json['marketplace_enabled'] as bool?,
       agreementsEnabled: json['agreements_enabled'] as bool?,
+      businessTagline: json['business_tagline'] as String?,
+      businessDescription: json['business_description'] as String?,
+      ownerBio: json['owner_bio'] as String?,
       // Partner
       categoryId: json['category_id'] as String?,
       agreementStatus: json['agreement_status'] as String?,
@@ -213,6 +232,10 @@ class UserProfile {
       if (partnersEnabled != null) 'partners_enabled': partnersEnabled,
       if (marketplaceEnabled != null) 'marketplace_enabled': marketplaceEnabled,
       if (agreementsEnabled != null) 'agreements_enabled': agreementsEnabled,
+      if (businessTagline != null) 'business_tagline': businessTagline,
+      if (businessDescription != null)
+        'business_description': businessDescription,
+      if (ownerBio != null) 'owner_bio': ownerBio,
       // Partner
       if (categoryId != null) 'category_id': categoryId,
       if (agreementStatus != null) 'agreement_status': agreementStatus,
@@ -254,6 +277,9 @@ class UserProfile {
     bool? partnersEnabled,
     bool? marketplaceEnabled,
     bool? agreementsEnabled,
+    String? businessTagline,
+    String? businessDescription,
+    String? ownerBio,
     String? categoryId,
     String? agreementStatus,
     double? commissionRate,
@@ -288,6 +314,9 @@ class UserProfile {
       partnersEnabled: partnersEnabled ?? this.partnersEnabled,
       marketplaceEnabled: marketplaceEnabled ?? this.marketplaceEnabled,
       agreementsEnabled: agreementsEnabled ?? this.agreementsEnabled,
+      businessTagline: businessTagline ?? this.businessTagline,
+      businessDescription: businessDescription ?? this.businessDescription,
+      ownerBio: ownerBio ?? this.ownerBio,
       categoryId: categoryId ?? this.categoryId,
       agreementStatus: agreementStatus ?? this.agreementStatus,
       commissionRate: commissionRate ?? this.commissionRate,

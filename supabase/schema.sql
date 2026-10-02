@@ -18,6 +18,14 @@ create table public.profiles (
     -- Owner specific fields
     business_name text,
     business_logo_url text,
+    -- The Owner's own marketing copy, collected on the onboarding form's
+    -- business-details and bio steps. These three were being collected and
+    -- silently discarded (the write path only ever sent 4 columns), so
+    -- they're now actually stored — they're what a marketplace card and
+    -- any future public business page read from.
+    business_tagline text,
+    business_description text,
+    owner_bio text,
     primary_color text, 
     plan_tier text not null default 'free' check (plan_tier in ('free', 'pro', 'premium')),
     stripe_account_id text,
@@ -99,6 +107,7 @@ create policy "Allow owner to manage their business's members"
 revoke update on public.profiles from authenticated, anon;
 grant update (
     business_name, selected_category, primary_color, job_id,
+    business_tagline, business_description, owner_bio,
     feature_toggles, is_active,
     partners_enabled, marketplace_enabled, agreements_enabled
 ) on public.profiles to authenticated;

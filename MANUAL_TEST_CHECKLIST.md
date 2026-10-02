@@ -103,7 +103,16 @@ page after every rebuild).
 *(Also robot-BLOCKED — the hardest flows.)*
 
 - [ ] **D1** Sign up a **third email** on the landing page with
-      **Code = `SOPHIA-SOUND-999`** → becomes a **PRO owner** — *notes:*
+      **Code = `DEMO-YOGA-001`** (or `DEMO-NUTRITION-001`) → becomes a
+      **PRO owner** pre-branded as *Sunrise Yoga* / *Fresh Start Nutrition* —
+      *notes:*
+
+  > ⚠️ **Corrected:** an earlier version of this checklist said to use
+  > `SOPHIA-SOUND-999`. That constant (`BuyerConfig.dynamicActivationKey`)
+  > is a dead placeholder — nothing in the app reads it — so it always
+  > fails with "Invalid or already-used activation key". The only keys that
+  > actually work today are the two above (`mock_auth_source.dart`).
+  > Each works exactly once, then it is spent.
 - [ ] **D2** Compare vs the free account: what looks different (e.g., no
       "upgrade" prompts)? If nothing visible, say so — *notes:*
 - [ ] **D3** 🚧 **Robot BLOCKED (Step 13) — two independent owners link

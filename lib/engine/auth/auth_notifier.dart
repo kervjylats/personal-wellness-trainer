@@ -131,17 +131,29 @@ class AuthNotifier extends Notifier<AuthState> {
     required String category,
     required String primaryColorHex,
     String? jobId,
+    String? businessTagline,
+    String? businessDescription,
+    String? ownerBio,
   }) async {
     if (state is! AuthAuthenticated) return false;
     final current = state as AuthAuthenticated;
 
     try {
+      // Tagline / description / bio were collected by the onboarding form
+      // but never passed here, so everything the Owner typed about their
+      // business was silently dropped. They're the raw material for the
+      // marketplace card and any public business page, so they're persisted
+      // now. Empty strings are normalised to null so an untouched optional
+      // field doesn't write '' across the app.
       final updatedProfile = current.profile.copyWith(
         businessName: businessName,
         selectedCategory: category,
         categoryId: category,
         primaryColor: primaryColorHex,
         jobId: jobId ?? category,
+        businessTagline: _cleanOptional(businessTagline),
+        businessDescription: _cleanOptional(businessDescription),
+        ownerBio: _cleanOptional(ownerBio),
       );
 
       // Keep the roster row (created at signUp time) in sync now that
@@ -244,7 +256,12 @@ class AuthNotifier extends Notifier<AuthState> {
       planTier: 'free',
       businessId: newBusinessId,
       businessName: '${current.profile.displayName} Space',
-      jobId: 'yoga_studio',
+      // Carry the associate's OWN job type into their new business rather
+      // than hardcoding 'yoga_studio'. It used to be pinned to yoga, so a
+      // nutritionist who launched their own business silently became a yoga
+      // studio until they redid onboarding. They're routed to onboarding
+      // anyway (isNewOwner: true) where they confirm/replace it.
+      jobId: current.profile.jobId,
       categoryId: null,
     );
 
@@ -432,6 +449,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   // ── Private Helpers ────────────────────────────────────────────────────────
+
+  /// Trims an optional onboarding field, collapsing whitespace-only input
+  /// to null so a blank optional field doesn't persist as an empty string.
+  static String? _cleanOptional(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
 
   AuthRepository _resolveRepository() {
     if (DataConfig.useMockData) {

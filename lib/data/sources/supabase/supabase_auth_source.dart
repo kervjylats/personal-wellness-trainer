@@ -77,6 +77,12 @@ class SupabaseAuthSource implements AuthRepository {
       'selected_category': updatedProfile.selectedCategory,
       'primary_color': updatedProfile.primaryColor,
       'job_id': updatedProfile.jobId,
+      // The Owner's own marketing copy. Columns added in schema.sql
+      // (business_tagline / business_description / owner_bio); without
+      // these the onboarding form collected all three and stored none.
+      'business_tagline': updatedProfile.businessTagline,
+      'business_description': updatedProfile.businessDescription,
+      'owner_bio': updatedProfile.ownerBio,
     }).eq('user_id', userId);
   }
 
