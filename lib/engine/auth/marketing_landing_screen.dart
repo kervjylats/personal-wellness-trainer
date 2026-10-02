@@ -24,6 +24,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:personal_wellness_trainer/config/buyer_config.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
+import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/utils/validators.dart';
@@ -31,6 +32,7 @@ import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 
 class MarketingLandingScreen extends ConsumerStatefulWidget {
   const MarketingLandingScreen({super.key});
@@ -60,6 +62,25 @@ class _MarketingLandingScreenState
   }
 
   void _onCodeChanged() => setState(() {});
+
+  /// True when the visitor arrived carrying an invite token in the URL
+  /// (a shared link, or a link opened from a scanned QR code). The form
+  /// then reads as "you've been invited" and the code is already filled
+  /// in, instead of showing the generic pitch with an empty code box and
+  /// quietly discarding the token they tapped.
+  bool _cameFromInviteLink = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_cameFromInviteLink) return;
+    final code = InviteLinkBuilder.extractCode(
+      GoRouterState.of(context).uri.queryParameters[InviteLinkBuilder.tokenParam],
+    );
+    if (code == null || code.isEmpty) return;
+    _codeController.text = code;
+    _cameFromInviteLink = true;
+  }
 
   @override
   void dispose() {
@@ -155,6 +176,39 @@ class _MarketingLandingScreenState
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xl),
+
+                  if (_cameFromInviteLink) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.md,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight,
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.inputRadius),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.mark_email_read_outlined,
+                            size: 20,
+                            color: AppColors.success,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              "You've been invited — your code is filled "
+                              'in below. Create your account to join.',
+                              style: AppTextStyles.bodyMedium
+                                  .copyWith(color: AppColors.success),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
 
                   if (showKeyField) ...[
                     _ActivationKeySection(

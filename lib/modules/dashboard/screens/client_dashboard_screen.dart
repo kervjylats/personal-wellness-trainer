@@ -1,5 +1,7 @@
 // lib/modules/dashboard/screens/client_dashboard_screen.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +14,9 @@ import 'package:personal_wellness_trainer/engine/providers/dashboard_refresh_bus
 import 'package:personal_wellness_trainer/engine/registry/widget_registry.dart';
 import 'package:personal_wellness_trainer/modules/dashboard/providers/dashboard_provider.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
+import 'package:personal_wellness_trainer/modules/invites/screens/invite_share.dart';
 import 'package:personal_wellness_trainer/modules/invites/screens/qr_invite_dialog.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 
 class ClientDashboardScreen extends ConsumerWidget {
@@ -193,7 +197,12 @@ class ClientDashboardScreen extends ConsumerWidget {
   void _showTokenSheet(BuildContext context, String token) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final mockUrl = 'https://wellpath.app/join?token=$token';
+    // Built by the shared builder — the same payload the owner's invite
+    // dialog shares, pointed at a route that actually exists. (This was a
+    // hardcoded 'https://wellpath.app/join?token=$token': the leftover
+    // pre-rename brand, on a /join route that was never registered, so
+    // the link a client was told to "share" could never have worked.)
+    final inviteUrl = InviteLinkBuilder.buildInviteUrl(token);
 
     showModalBottomSheet<void>(
       context: context,
@@ -211,7 +220,7 @@ class ClientDashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: colorScheme.surfaceContainer, borderRadius: BorderRadius.circular(8)),
-              child: Text(mockUrl, style: const TextStyle(fontSize: 14)),
+              child: SelectableText(inviteUrl, style: const TextStyle(fontSize: 14)),
             ),
             const SizedBox(height: 16),
             Row(
@@ -224,15 +233,31 @@ class ClientDashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      unawaited(InviteShare.share(
+                        context,
+                        inviteUrl: inviteUrl,
+                        subject: "You're invited",
+                        message: "Join me and become a client!",
+                      ));
+                    },
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: const Text('Share'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: OutlinedButton(
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      showDialog<void>(
+                      unawaited(showDialog<void>(
                         context: context,
-                        builder: (_) => QrInviteDialog(inviteUrl: mockUrl),
-                      );
+                        builder: (_) => QrInviteDialog(inviteUrl: inviteUrl),
+                      ));
                     },
-                    child: const Text('View QR Code'),
+                    child: const Text('QR Code'),
                   ),
                 ),
               ],

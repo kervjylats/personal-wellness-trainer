@@ -1,11 +1,15 @@
 // lib/engine/invites/slot_conflict_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
+import 'package:personal_wellness_trainer/modules/invites/screens/invite_share.dart';
 
 class SlotConflictScreen extends ConsumerStatefulWidget {
   const SlotConflictScreen({
@@ -120,7 +124,11 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
   void _showLinkSheet(String token) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    const mockUrl = 'https://YOUR_DOMAIN_HERE/join?token=\$token';
+    // Real, tappable link from the shared builder. This was
+    // 'https://YOUR_DOMAIN_HERE/join?token=\$token' declared `const` with
+    // an ESCAPED dollar — so it rendered the literal text "$token" and the
+    // actual invite was never shown to the user at all.
+    final inviteUrl = InviteLinkBuilder.buildInviteUrl(token);
 
     showModalBottomSheet<void>(
       context: context,
@@ -143,8 +151,8 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
                 color: colorScheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
               ),
-              child: Text(
-                mockUrl,
+              child: SelectableText(
+                inviteUrl,
                 style: AppTextStyles.bodySmall
                     .copyWith(color: colorScheme.onSurfaceVariant),
               ),
@@ -157,12 +165,33 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
                   .copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: 'Done',
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(context).pop();
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Done',
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      unawaited(InviteShare.share(
+                        context,
+                        inviteUrl: inviteUrl,
+                        subject: "You're invited as a client",
+                      ));
+                    },
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: const Text('Share'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

@@ -46,6 +46,20 @@ abstract final class BuyerConfig {
   static const String supportEmail   = 'your-support@email.com';
   static const String supportWebsite = 'https://your-agency-website.com';
 
+  // ── Invite Link Base URL ──
+  // The origin that invite links and their QR codes are built from —
+  // shared via WhatsApp/SMS, or printed on a poster. Every invite
+  // surface (Network invite dialog, client's "Invite a Friend", the
+  // slot-conflict sheet) builds its link through
+  // engine/invites/invite_link_builder.dart so they can never drift
+  // apart again.
+  //
+  // Point this at wherever you actually HOST the built web app, with no
+  // trailing slash (a trailing one is tolerated). An Owner's invite links
+  // and a reseller's own marketing page can differ: this base is used for
+  // the /accept-invitation redemption links that join a specific business.
+  static const String inviteBaseUrl = 'https://your-domain.example';
+
   // ── Build-Time Job Lock (Single-Client Mode) ──
   static const String? lockedJobId = null;
 

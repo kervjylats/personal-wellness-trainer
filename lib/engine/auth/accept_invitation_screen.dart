@@ -37,6 +37,7 @@ import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
 
 // Mirrors the established pattern in propose_agreement_screen.dart
@@ -67,6 +68,52 @@ class _AcceptInvitationScreenState
   bool _accepted = false;
   String? _error;
   String _joinedRole = 'client'; // updated on successful join
+
+  /// Set when the visitor arrived from a shared/scanned invite link, so
+  /// the form can say "you're invited" instead of the generic
+  /// "enter your code" prompt.
+  bool _cameFromLink = false;
+
+  bool _linkValidated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consumeDeepLink());
+  }
+
+  /// Reads `?token=` (or a whole invite URL) off the current location.
+  ///
+  /// This is what makes a shared link or a scanned QR code actually
+  /// work: previously the screen only ever read what was typed into the
+  /// Code field, so arriving with the token in the URL silently dropped
+  /// it and the visitor had to retype a code they'd just tapped.
+  Future<void> _consumeDeepLink() async {
+    if (!mounted) return;
+    final query = GoRouterState.of(context).uri.queryParameters;
+    final raw = query[InviteLinkBuilder.tokenParam];
+    final code = InviteLinkBuilder.extractCode(raw);
+    if (code == null || code.isEmpty) return;
+
+    setState(() {
+      _tokenController.text = code;
+      _cameFromLink = true;
+    });
+
+    // Validate so the person sees immediately whether the link they're
+    // following is valid, without having to press Continue first.
+    final result =
+        await ref.read(inviteLinkNotifierProvider.notifier).validateToken(code);
+    if (!mounted) return;
+    setState(() {
+      if (result is TokenValid) {
+        _linkValidated = true;
+      } else {
+        _linkValidated = false;
+        _error = "That invite link isn't valid or has already been used.";
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -237,6 +284,8 @@ class _AcceptInvitationScreenState
                       obscurePassword: _obscurePassword,
                       isSaving: _isSaving,
                       error: _error,
+                      cameFromLink: _cameFromLink,
+                      linkValidated: _linkValidated,
                       onAccept: _accept,
                       onTogglePassword: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
@@ -260,6 +309,8 @@ class _RedemptionFormView extends StatelessWidget {
     required this.obscurePassword,
     required this.isSaving,
     required this.error,
+    required this.cameFromLink,
+    required this.linkValidated,
     required this.onAccept,
     required this.onTogglePassword,
     required this.appName,
@@ -273,6 +324,8 @@ class _RedemptionFormView extends StatelessWidget {
   final bool obscurePassword;
   final bool isSaving;
   final String? error;
+  final bool cameFromLink;
+  final bool linkValidated;
   final VoidCallback onAccept;
   final VoidCallback onTogglePassword;
   final String appName;
@@ -294,19 +347,61 @@ class _RedemptionFormView extends StatelessWidget {
             color: colorScheme.primary,
           ),
           const SizedBox(height: AppSpacing.md),
-          const Text(
-            'Enter your code to get started',
+          Text(
+            cameFromLink
+                ? (linkValidated
+                    ? "You've been invited — create your account to join"
+                    : 'Create your account to use your invite code')
+                : 'Enter your code to get started',
             style: AppTextStyles.headlineLarge,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Whether you were invited by someone or bought a license, '
-            'enter the code you were given below.',
+          Text(
+            cameFromLink
+                ? 'Your invite code is already filled in. Add your details '
+                    'below and you are in.'
+                : 'Whether you were invited by someone or bought a license, '
+                    'enter the code you were given below.',
             style: AppTextStyles.bodyMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
+          if (cameFromLink) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: (linkValidated ? AppColors.successLight : AppColors.errorLight),
+                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    linkValidated ? Icons.check_circle : Icons.error_outline,
+                    size: 18,
+                    color: linkValidated ? AppColors.success : AppColors.error,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      linkValidated
+                          ? 'Invite code recognised'
+                          : "This invite link isn't valid or has already been used",
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: linkValidated
+                            ? AppColors.success
+                            : AppColors.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           AppTextField(
             hint: 'e.g. wlp_000002 or ZEN-YOGA-777',
             label: 'Code',

@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
 import 'package:personal_wellness_trainer/modules/invites/screens/qr_invite_dialog.dart';
 
@@ -46,9 +47,14 @@ class _InviteDialogState extends ConsumerState<InviteDialog> {
     switch (result) {
       case InviteLinkCreated(:final link):
         Navigator.of(context).pop();
+        // A real, tappable link (not the bare token) so the QR code and
+        // the share sheet carry the SAME payload, and the recipient can
+        // tap or scan it straight into the redemption screen.
+        final inviteUrl =
+            InviteLinkBuilder.buildInviteUrl(link.token);
         unawaited(showDialog<void>(
           context: context,
-          builder: (_) => QrInviteDialog(inviteUrl: link.token),
+          builder: (_) => QrInviteDialog(inviteUrl: inviteUrl),
         ));
 
       case InviteLinkError(:final message):

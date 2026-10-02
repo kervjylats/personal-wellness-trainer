@@ -1,7 +1,11 @@
 // lib/modules/chat/screens/chat_room_screen.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
+import 'package:personal_wellness_trainer/modules/invites/screens/invite_share.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
 import 'package:personal_wellness_trainer/core/utils/formatters.dart';
@@ -119,7 +123,10 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AttachmentPicker(options: options),
+      builder: (_) => _AttachmentPicker(
+        options: options,
+        inviteUrl: InviteLinkBuilder.buildAppLink(),
+      ),
     );
   }
 
@@ -403,8 +410,14 @@ class _AttachmentOption {
 }
 
 class _AttachmentPicker extends StatelessWidget {
-  const _AttachmentPicker({required this.options});
+  const _AttachmentPicker({
+    required this.options,
+    required this.inviteUrl,
+  });
   final List<_AttachmentOption> options;
+
+  /// The app entry link shared when an option is tapped.
+  final String inviteUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -453,13 +466,25 @@ class _AttachmentPicker extends StatelessWidget {
               return GestureDetector(
                 onTap: () {
                   Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${opt.label} — coming in Phase 10'),
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  // A real share sheet now. This used to be a SnackBar
+                  // reading "coming in Phase 10" no matter which option was
+                  // tapped, so the picker looked functional and silently
+                  // did nothing.
+                  //
+                  // NOTE: what gets shared is the app's own entry link, not
+                  // the picked attachment — actually attaching/encoding a
+                  // photo, file or GPS pin is a separate piece of work
+                  // (it needs storage + upload, which is still Phase 10
+                  // work in the media/scheduling sources). So this shares
+                  // the invitation to the app rather than pretending the
+                  // attachment itself was sent.
+                  unawaited(InviteShare.share(
+                    context,
+                    inviteUrl: inviteUrl,
+                    message: opt.label == 'Location'
+                        ? 'Sharing my location and joining me on the app'
+                        : 'Join me on the app',
+                  ));
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
