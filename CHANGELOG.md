@@ -3,7 +3,55 @@
 A plain-English summary of everything fixed. You don't need to read the code
 to understand this — just what changed and why.
 
-## Latest — Round 6 — production-like build
+## Latest — Round 7 — invites you can actually share
+
+1. **One canonical invite link.** The app used to represent the same
+   invite three ways (a bare code, a "wellpath" example URL, and a
+   formatting bug in a constant). Everything now goes through one builder:
+   the Invite dialog, QR poster, client dashboard, slot-conflict screen
+   and chat all show/produce the same real URL — hash-style
+   (`/#/accept-invitation?token=wlp_...`) so it loads on any static
+   server, on the live origin you're actually running on. The "wellpath"
+   domain is gone from source *and* the built bundle.
+2. **Share and scan, natively.** The invite dialogs gained real share
+   actions (system share sheet via `share_plus`), a QR poster for the
+   link, and a QR scanner (`mobile_scanner`) — on Windows, where camera
+   access isn't supported, the scan option says so honestly instead of
+   failing silently.
+3. **A shared link opens into the invite, prefilled.** Opening the URL in
+   a fresh browser lands directly on the redemption screen with the code
+   filled in and validated live ("Invite code recognised" + a "You've
+   been invited" heading); the front-door page does the same when the URL
+   carries a token, and pasting a whole link into the Code box works too.
+4. **Onboarding stopped losing what you typed.** Business tagline,
+   description and bio were collected by the form and then thrown away —
+   they're real profile fields now (saved through mock and Supabase,
+   schema included). The bio step no longer overwrites your display name
+   with the business name, launching your own business carries your
+   actual category instead of a hardcoded "Yoga Studio", and the manual
+   test checklist points at activation keys the code really reads.
+5. **The cold-load bug hunt (stage 3).** Even with all that, a fresh
+   browser still dropped the token. Three layers were wrong: path-style
+   links 404'd on a static server; the Flutter engine resets
+   `defaultRouteName` to `/` as soon as the framework starts reporting
+   navigation, which raced the router's start-up and wiped `?token=`
+   from the hash; and the logged-out redirect bounced the page before the
+   form could read it. The app now captures its boot route before
+   `runApp` and pins the router to it, whitelists the public redemption
+   route, and carries the token through the front-door redirect.
+6. **The test server moved off port 8080** (that's the LocalAI hub's
+   model port — our server there blocked seven of its models) to 9090,
+   runs only on demand, and stops itself after every run. Daily app use
+   needs no server at all; `serve.bat` exists just to open the built
+   `web` folder in a browser.
+7. **Verified.** `probe_deeplink.py` proves the whole story in a real
+   browser: 11/11 — mint, display, fresh-context open, prefill, live
+   validation, invitee signup without typing the code, dashboard landing.
+   The full suite stays 50/52 (the 2 failures are the documented
+   invite→propose dead-end, kept honest), `flutter analyze` clean,
+   176/176 unit tests, `flutter build web` OK.
+
+## Round 6 fixes
 
 1. **Dev shortcuts are gone for good.** The floating Quick Sign-In button,
    the QA console screen, and the old "recognized test email" back-door
