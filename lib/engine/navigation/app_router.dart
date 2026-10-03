@@ -19,10 +19,22 @@ import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/auth/forgot_password_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/onboarding_screen.dart';
 import 'package:personal_wellness_trainer/engine/auth/marketing_landing_screen.dart';
+import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/navigation/role_routes.dart';
 import 'package:personal_wellness_trainer/engine/roles/app_role.dart';
 import 'package:personal_wellness_trainer/modules/challenges/screens/challenge_detail_screen.dart';
 import 'package:personal_wellness_trainer/modules/settings/screens/own_business_screen.dart';
+
+/// The platform route captured at app entry (set by main() before runApp).
+///
+/// The engine resets `defaultRouteName` to '/' as soon as the framework
+/// starts reporting navigation, which on web races with GoRouter's
+/// construction when the incoming link carries `?token=` in the hash —
+/// the router then boots at '/' and the shared invite token is dropped
+/// before the redemption screen can read it (Round 7 probe). Pinning the
+/// captured route with `overridePlatformDefaultLocation` makes the boot
+/// location deterministic instead.
+String bootInitialRoute = RouteNames.rootPath;
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);
@@ -32,7 +44,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: false,
     refreshListenable: notifier,
     redirect: notifier._redirect,
-    initialLocation: RouteNames.rootPath,
+    initialLocation: bootInitialRoute,
+    overridePlatformDefaultLocation: true,
     routes: [
       GoRoute(
         path: RouteNames.rootPath,
@@ -115,10 +128,19 @@ class _RouterNotifier extends ChangeNotifier {
         // and then — because /loading isn't whitelisted for
         // AuthUnauthenticated below — silently drop the user on the front
         // door with the error message rendered nowhere (Round 6 probe).
+        //
+        // The redemption screen joins them (Round 7): a shared invite
+        // link opens COLD, so it spends its first beats in AuthInitial
+        // while the session restores. Bouncing it to /loading discards
+        // ?token= (the redirect target carries no query), and when
+        // AuthUnauthenticated then redirects again the token is already
+        // gone — the recipient landed on a generic front door with no
+        // prefilled code. It's a public form; let it render.
         if (location == RouteNames.loadingPath ||
             location == RouteNames.rootPath ||
             location == RouteNames.loginPath ||
-            location == RouteNames.marketingLandingPath) {
+            location == RouteNames.marketingLandingPath ||
+            location == RouteNames.acceptInvitationPath) {
           return null;
         }
         return RouteNames.loadingPath;
@@ -133,7 +155,17 @@ class _RouterNotifier extends ChangeNotifier {
         }
         // Front door: logged-out visitors land on the buyer's marketing
         // landing page (/get-started), not the login form. Sign-in remains
-        // reachable via the "Sign in" link on that page.
+        // reachable via the "Sign in" link on that page. If the bounced
+        // route was carrying an invite token, keep it on the query string
+        // — the landing screen reads it and shows the "you've been
+        // invited" state with the code prefilled, so no shared link ever
+        // arrives dead (Round 7).
+        final token = routerState.uri
+            .queryParameters[InviteLinkBuilder.tokenParam];
+        if (token != null && token.trim().isNotEmpty) {
+          return '${RouteNames.marketingLandingPath}'
+              '?${InviteLinkBuilder.tokenParam}=${Uri.encodeComponent(token.trim())}';
+        }
         return RouteNames.marketingLandingPath;
 
       case AuthAuthenticated(:final profile, :final isNewOwner):

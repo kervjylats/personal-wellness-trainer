@@ -58,7 +58,12 @@ abstract final class BuyerConfig {
   // trailing slash (a trailing one is tolerated). An Owner's invite links
   // and a reseller's own marketing page can differ: this base is used for
   // the /accept-invitation redemption links that join a specific business.
-  static const String inviteBaseUrl = 'https://your-domain.example';
+  //
+  // EMPTY (the default) = use the live origin of the running app
+  // (Uri.base.origin) — so dev on localhost, demo, and production all get
+  // correct links without editing code. Set it only when invites must
+  // point at a DIFFERENT canonical domain than the app itself.
+  static const String inviteBaseUrl = '';
 
   // ── Build-Time Job Lock (Single-Client Mode) ──
   static const String? lockedJobId = null;

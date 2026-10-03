@@ -30,6 +30,8 @@ import 'package:personal_wellness_trainer/modules/reservations/registry/reservat
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  bootInitialRoute =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName;
   _registerModuleWidgets();
 
   if (!DataConfig.useMockData) {

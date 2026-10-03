@@ -131,7 +131,12 @@ class _AcceptInvitationScreenState
       _error = null;
     });
 
-    final code = _tokenController.text.trim();
+    // A visitor may paste the WHOLE shared link into the code box (from an
+    // email, a chat, or a QR that decoded to text). extractCode understands
+    // full links, hash fragments and bare codes alike, and hands a plain
+    // token back untouched — so run it first instead of validating raw
+    // URL text as if it were a code.
+    final code = InviteLinkBuilder.extractCode(_tokenController.text) ?? '';
 
     // Try it as an invite link first — cleanly returns TokenInvalid for
     // an unknown code rather than throwing, so falling through to the

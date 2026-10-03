@@ -15,21 +15,30 @@ import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dar
 
 void main() {
   group('buildInviteUrl', () {
-    test('points at the real accept-invitation route with a token param', () {
+    test('points at the HASH accept-invitation route with a token param', () {
       final url = InviteLinkBuilder.buildInviteUrl('wlp_000011');
 
-      expect(url, contains('/accept-invitation'));
-      expect(url, contains('?${InviteLinkBuilder.tokenParam}=wlp_000011'));
+      // The app is a hash router — the route (and its query) must live in
+      // the fragment. A path-style link would 404 on a static host and
+      // never reach the redemption screen at all.
+      final uri = Uri.parse(url);
+      expect(uri.fragment, startsWith('/accept-invitation'));
+      expect(uri.fragment,
+          contains('?${InviteLinkBuilder.tokenParam}=wlp_000011'));
+      expect(url, isNot(contains('//accept-invitation')));
       // The phantom /join route was never registered — an invite link must
       // never point at it again.
       expect(url, isNot(contains('/join')));
     });
 
-    test('is built from the configured base, with no double slash', () {
+    test('defaults to a live http origin (config blank = wherever the '
+        'app is running)', () {
       final url = InviteLinkBuilder.buildInviteUrl('wlp_000011');
 
-      expect(url, startsWith(BuyerConfig.inviteBaseUrl));
-      expect(url, isNot(contains('//accept-invitation')));
+      expect(BuyerConfig.inviteBaseUrl, isEmpty,
+          reason: 'blank config = use the live origin by default');
+      expect(url, startsWith('http'));
+      expect(Uri.parse(url).hasAuthority, isTrue);
     });
 
     test('carries no leftover pre-rename brand', () {
@@ -52,6 +61,36 @@ void main() {
       final url = InviteLinkBuilder.buildInviteUrl('wlp_000011');
 
       expect(InviteLinkBuilder.extractCode(url), 'wlp_000011');
+    });
+
+    test('reads a hash-fragment link (the format the app actually '
+        'produces)', () {
+      // Where a hash router keeps its location: route + query inside #.
+      expect(
+        InviteLinkBuilder.extractCode(
+          'https://x.example/#/accept-invitation?token=wlp_000011',
+        ),
+        'wlp_000011',
+      );
+      // …and a bare fragment with no origin at all.
+      expect(
+        InviteLinkBuilder.extractCode('#/accept-invitation?token=wlp_000011'),
+        'wlp_000011',
+      );
+      expect(
+        InviteLinkBuilder.extractCode('/#/accept-invitation?token=wlp_000011'),
+        'wlp_000011',
+      );
+    });
+
+    test('still reads the old path-style link (back-compat for any link '
+        'already shared)', () {
+      expect(
+        InviteLinkBuilder.extractCode(
+          'https://x.example/accept-invitation?token=wlp_000011',
+        ),
+        'wlp_000011',
+      );
     });
 
     test('round-trips: what build produces, extract recovers', () {
@@ -86,6 +125,12 @@ void main() {
     test('ignores an empty token param rather than returning empty', () {
       expect(
         InviteLinkBuilder.extractCode('https://x.example/accept-invitation?token='),
+        isNull,
+      );
+      expect(
+        InviteLinkBuilder.extractCode(
+          'https://x.example/#/accept-invitation?token=',
+        ),
         isNull,
       );
     });

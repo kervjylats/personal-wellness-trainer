@@ -18,9 +18,25 @@
 //
 // Everything now goes through buildInviteUrl() so a shared link and its
 // QR encode the SAME thing, and it points at a route that actually
-// exists (/accept-invitation). The base is configurable per buyer — see
-// BuyerConfig.inviteBaseUrl — because an Owner's invite links are
-// different from a reseller's own marketing page.
+// exists (/#/accept-invitation).
+//
+// Two realities this file must respect (Round 7 browser verification):
+//
+//   1. HASH URL STRATEGY — the app is a hash router (no url_strategy
+//      package / usePathUrlStrategy anywhere). Routes live inside the
+//      FRAGMENT: `#/accept-invitation`. A path-style link
+//      (/accept-invitation?token=…) would make the browser GET that path
+//      from the server (404 on a static host, app never loads), and even
+//      if served, the router would land on the default route instead of
+//      the redemption screen. So the query rides INSIDE the fragment:
+//      `https://host/#/accept-invitation?token=wlp_000011` — that is what
+//      GoRouterState.uri.queryParameters sees.
+//
+//   2. LIVE ORIGIN by default — links must point at wherever the app is
+//      actually running (localhost during dev/demo, the real domain in
+//      production). BuyerConfig.inviteBaseUrl is an OPTIONAL override for
+//      a reseller who wants invites to point at a different canonical
+//      domain; when it's blank, Uri.base.origin is used.
 // ═══════════════════════════════════════════════════════════════
 
 import 'package:personal_wellness_trainer/config/buyer_config.dart';
@@ -32,13 +48,13 @@ abstract final class InviteLinkBuilder {
   static const String tokenParam = 'token';
 
   /// Full shareable link for [token] — e.g.
-  /// https://your-domain.example/accept-invitation?token=wlp_000011
+  /// https://host/#/accept-invitation?token=wlp_000011
   ///
   /// This is what every invite surface shows, copies, shares and encodes
   /// into its QR code, so a recipient can tap or scan it and land
   /// directly on the redemption screen with the code already filled in.
   static String buildInviteUrl(String token) {
-    final base = BuyerConfig.inviteBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    final base = _base();
     return '$base$_acceptInvitationPath?$tokenParam=$token';
   }
 
@@ -46,15 +62,29 @@ abstract final class InviteLinkBuilder {
   /// gets shared when someone taps Share inside a chat thread: there's no
   /// invite code in play there, so we share the app's own landing page
   /// rather than inventing a token.
-  static String buildAppLink() {
-    final base = BuyerConfig.inviteBaseUrl.replaceAll(RegExp(r'/+$'), '');
-    return base;
+  static String buildAppLink() => _base();
+
+  /// Buyer-configured canonical domain when set, otherwise the live
+  /// origin of the running app. Falls back to http://host for the odd
+  /// non-web environment (Dart VM tests) where Uri.base has no scheme.
+  static String _base() {
+    final configured = BuyerConfig.inviteBaseUrl.trim();
+    if (configured.isNotEmpty) {
+      return configured.replaceAll(RegExp(r'/+$'), '');
+    }
+    final current = Uri.base;
+    if (current.isScheme('http') || current.isScheme('https')) {
+      return current.origin;
+    }
+    return 'http://localhost';
   }
 
   /// Pulls a code back out of whatever the visitor actually has:
-  ///   - a full shared link   'https://…/accept-invitation?token=wlp_000011'
-  ///   - a bare token         'wlp_000011'
-  ///   - a pasted activation  'DEMO-YOGA-001'
+  ///   - a full shared link   'https://…/#/accept-invitation?token=wlp_000011'
+  ///   - the old path-style    'https://…/accept-invitation?token=wlp_000011'
+  ///   - a fragment by itself  '#/accept-invitation?token=wlp_000011'
+  ///   - a bare token          'wlp_000011'
+  ///   - a pasted activation   'DEMO-YOGA-001'
   ///
   /// Returns null when there's nothing usable in [input]. Used by the
   /// redemption screen (deep link / scanned QR) and by "Join" when a
@@ -64,20 +94,30 @@ abstract final class InviteLinkBuilder {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return null;
 
-    // Bare code — no scheme, no query. Return it untouched so ordinary
-    // hand-typed tokens and activation keys pass straight through.
+    // Bare code — no scheme, no query, no fragment. Return it untouched so
+    // ordinary hand-typed tokens and activation keys pass straight through.
     if (!trimmed.contains('?') && !trimmed.contains('/')) {
       return trimmed;
     }
 
     final uri = Uri.tryParse(trimmed);
     if (uri == null) return null;
-    final fromQuery = uri.queryParameters[tokenParam];
-    if (fromQuery != null && fromQuery.trim().isNotEmpty) {
-      return fromQuery.trim();
+
+    // Query before the fragment (path-style links, /?token=… front door).
+    final fromQuery = _codeFrom(uri.queryParameters);
+    if (fromQuery != null) return fromQuery;
+
+    // Hash-style links keep the route AND its query inside the fragment
+    // ('#/accept-invitation?token=wlp_000011') — the fragment is where a
+    // hash router stores its location, so this is the common case.
+    final fragment = uri.fragment;
+    if (fragment.contains('?')) {
+      final fromFragment = Uri.tryParse(fragment);
+      final code = _codeFrom(fromFragment?.queryParameters ?? const {});
+      if (code != null) return code;
     }
 
-    // A link with no usable ?token= — try the LAST non-empty path segment so
+    // A link with no usable token — try the LAST non-empty path segment so
     // a future /wlp_000011-style link still resolves. Known route names are
     // skipped deliberately: a link like /accept-invitation?token= (param
     // present but blank) must resolve to nothing rather than handing the
@@ -90,5 +130,15 @@ abstract final class InviteLinkBuilder {
     return null;
   }
 
-  static const String _acceptInvitationPath = '/accept-invitation';
+  static String? _codeFrom(Map<String, String> params) {
+    final raw = params[tokenParam];
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// Route to the redemption screen. With hash routing the '#' belongs to
+  /// the final URL (added by [_base] + this path), so the fragment carries
+  /// both the route and its ?token= query.
+  static const String _acceptInvitationPath = '/#/accept-invitation';
 }
