@@ -524,6 +524,11 @@ create table public.marketplace_listings (
     owner_category_id text not null,
     discoverable boolean not null default false,
     open_categories text[] not null default '{}',
+    -- Same-job peer network, mutual opt-in: an owner with the same
+    -- owner_category_id is only discoverable when this AND the viewer's own
+    -- column are both true. Default false keeps the original "same job never
+    -- appears" behaviour until an owner deliberately opts in.
+    show_to_same_title boolean not null default false,
     updated_at timestamp with time zone not null default timezone('utc'::text, now()),
     tagline text,
     average_rating double precision

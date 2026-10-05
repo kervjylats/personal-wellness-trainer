@@ -6,7 +6,12 @@
 // Blueprint §18 Hardcoded UI Rules enforced here:
 //   Rule 3: Master "Discoverable" toggle MUST be ON before category toggles become interactive.
 //   Rule 2: Category slots with an active agreement are greyed and non-interactive.
-//   Owner's own category is NEVER shown in the toggle list (no self-pairing).
+//   Rule 4: Jobs already covered by an active agreement are not offered.
+//   Owner's own category is hidden from the toggle list ONLY while the
+//   same-job peer network is off (no self-pairing). Once they opt in, their
+//   own job becomes a normal offerable slot — that is the whole point of
+//   the switch, and without it an owner could never be discovered by
+//   someone in their own trade.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,11 +35,20 @@ class AvailabilityCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final config = ref.watch(configProvider).valueOrNull;
     final categories = config?.industry.categories ?? [];
+    final mpConfig = config?.industry.partnershipMarketplace;
     final ownerCategoryId =
         marketplaceState.myListing?.ownerCategoryId ?? '';
 
-    final toggleableCategories =
-        categories.where((c) => c.id != ownerCategoryId).toList();
+    final showsToSameTitle = marketplaceState.showsToSameTitle;
+    final sameTitleLocked =
+        mpConfig != null && !mpConfig.sameTitleVisibilityOwnerCanToggle;
+
+    // The owner's own trade is always listed now. While the same-job peer
+    // network is off it stays greyed out with the reason spelled out —
+    // otherwise the owner has no idea such a slot is even possible. The
+    // previous hard filter hid it entirely, which read as "my trade can
+    // never be a slot" rather than "turn this on first".
+    final toggleableCategories = categories.toList();
 
     final isDiscoverable = marketplaceState.isDiscoverable;
     final openCategories = marketplaceState.openCategories;
@@ -69,6 +83,24 @@ class AvailabilityCard extends ConsumerWidget {
                   .read(marketplaceNotifierProvider.notifier)
                   .toggleDiscoverable(),
             ),
+            _ToggleRow(
+              title: 'Visible to owners with the same job',
+              subtitle: sameTitleLocked
+                  ? 'Set by the platform'
+                  : showsToSameTitle
+                      ? 'Other owners in your trade can find you, and you '
+                          'can find them'
+                      : 'Off — you only connect with owners in other trades',
+              value: showsToSameTitle,
+              locked: sameTitleLocked,
+              lockReason:
+                  sameTitleLocked ? 'Controlled by the platform owner' : null,
+              onChanged: sameTitleLocked
+                  ? null
+                  : (v) => ref
+                      .read(marketplaceNotifierProvider.notifier)
+                      .setShowToSameTitle(v),
+            ),
             if (toggleableCategories.isNotEmpty) ...[
               const Divider(height: AppSpacing.lg),
               Text(
@@ -81,6 +113,11 @@ class AvailabilityCard extends ConsumerWidget {
                 final lockedByAgreement =
                     activeAgreementCategories.contains(category.id);
                 final disabled = !isDiscoverable;
+                final isOwnCategory = category.id == ownerCategoryId;
+                // Your own trade is only offerable once you have opened the
+                // same-job network — that switch is the gate, and mutual
+                // opt-in means the row is pointless without it.
+                final lockedBySameTitle = isOwnCategory && !showsToSameTitle;
                 final isOpen = openCategories.contains(category.id);
 
                 String? lockReason;
@@ -88,26 +125,36 @@ class AvailabilityCard extends ConsumerWidget {
                   lockReason = 'Already in a Collab in this category';
                 } else if (disabled) {
                   lockReason = 'Enable "Discoverable" first';
+                } else if (lockedBySameTitle) {
+                  lockReason = sameTitleLocked
+                      ? 'Your own trade is hidden on this platform'
+                      : 'Turn on "Visible to owners with the same job" to '
+                          'offer your own trade';
                 }
 
                 return _ToggleRow(
-                  title: category.label,
+                  title: isOwnCategory
+                      ? '${category.label} (your trade)'
+                      : category.label,
                   subtitle: lockedByAgreement
                       ? 'Active agreement — slot is filled'
-                      : isOpen
-                          ? 'Open to Collab requests'
-                          : 'Not currently seeking an associate',
+                      : isOwnCategory
+                          ? 'Connects you with owners in your own trade'
+                          : isOpen
+                              ? 'Open to Collab requests'
+                              : 'Not currently seeking an associate',
                   value: isOpen,
-                  locked: lockedByAgreement || disabled,
+                  locked: lockedByAgreement || disabled || lockedBySameTitle,
                   lockReason: lockReason,
-                  onChanged: (lockedByAgreement || disabled)
-                      ? null
-                      : (_) => ref
-                          .read(marketplaceNotifierProvider.notifier)
-                          .toggleCategory(
-                            categoryId: category.id,
-                            lockedByAgreement: lockedByAgreement,
-                          ),
+                  onChanged:
+                      (lockedByAgreement || disabled || lockedBySameTitle)
+                          ? null
+                          : (_) => ref
+                              .read(marketplaceNotifierProvider.notifier)
+                              .toggleCategory(
+                                categoryId: category.id,
+                                lockedByAgreement: lockedByAgreement,
+                              ),
                 );
               }),
             ],
@@ -164,9 +211,15 @@ class _ToggleRow extends StatelessWidget {
                 ],
               ),
             ),
-            Switch(
-              value: value,
-              onChanged: isDisabled ? null : onChanged,
+            // Flutter's Switch carries no name of its own, so a screen reader
+            // (and the test harness) announces every row as "switch". Name it
+            // after the row title so each control is addressable.
+            Semantics(
+              label: title,
+              child: Switch(
+                value: value,
+                onChanged: isDisabled ? null : onChanged,
+              ),
             ),
           ],
         ),

@@ -3,6 +3,44 @@
 A plain-English summary of everything fixed. You don't need to read the code
 to understand this — just what changed and why.
 
+## Latest — Round 7 — who can see you in the marketplace
+
+1. **Your own job stays hidden until you say otherwise.** The Marketplace
+   "My Availability" card gained a switch: *Visible to owners with the same
+   job*. It ships OFF for every new business. While it's off, your own
+   trade is listed but greyed with the reason spelled out ("Turn on
+   … to offer your own trade"), so nobody self-pairs by accident. Turn it
+   on and your own job becomes an ordinary, offerable slot. Two config
+   keys decide whether it starts off (`same_title_visibility_default`) and
+   whether owners may flip it at all (`same_title_visibility_owner_can_toggle`)
+   — set the latter false and the row says "Controlled by the platform
+   owner" instead of responding to taps.
+2. **You're only seen by owners who opted in too.** The switch controls who
+   can find you *among owners in your own trade*: a viewer only sees your
+   listing if you both turned it on. One-sided opt-in shows nothing —
+   mutual by design. Owners in other trades see you exactly as before.
+3. **Jobs you already have a partner for stop being advertised.** Once an
+   agreement is Active, that job counts as covered on both sides: your own
+   slot for it reads "Already in a Collab in this category" and can't be
+   opened, and every business offering that job vanishes from your
+   discovery results — including the partner you already collab with (they
+   live in your partners list, so nothing is lost). Pending/proposed
+   agreements hide nothing yet; only Active ones count.
+4. **Same rules wherever listings are read.** The mock store and the
+   Supabase query apply identical filters, listings carry a
+   `show_to_same_title` flag (schema column included), and sending a
+   request for a slot the owner isn't advertising is rejected instead of
+   failing silently.
+5. **Every Availability switch now announces its own name.** Screen readers
+   hear "Yoga Studio switch" rather than a nameless "switch" — a genuine
+   accessibility fix, and the reason the test harness had been clicking the
+   wrong control.
+
+**Verified:** `flutter analyze` clean, `flutter test` 198/198, `flutter
+build web` OK, and the two-owner co-op game (27 turns, real browser) ran
+22/22 judged turns PASS with 5 documented skips — the reverse leg is now
+*supposed* to be blocked, because the first collab already covers that job.
+
 ## Latest — Round 7 — invites you can actually share
 
 1. **One canonical invite link.** The app used to represent the same

@@ -453,6 +453,16 @@ class _ReceivedRequestTile extends ConsumerWidget {
       partnerCommissionPct: rates.$2,
     );
 
+    if (ok) {
+      // The new ACTIVE agreement changes both providers the marketplace
+      // reads: the agreements list (so the slot greys out) and the
+      // covered-jobs set that closes discovery in that job (Rule 4).
+      // Without this the screen kept showing a stale list until the user
+      // pulled to refresh.
+      ref.invalidate(agreementsNotifierProvider);
+      ref.invalidate(marketplaceNotifierProvider);
+    }
+
     messenger.showSnackBar(
       SnackBar(
         content: Text(

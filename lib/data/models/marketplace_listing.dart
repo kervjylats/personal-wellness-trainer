@@ -19,6 +19,11 @@
 //   - openCategories: the category IDs the owner is seeking a partner for.
 //     Slots with an active agreement are removed from openCategories
 //     by the notifier (never shown as available when filled).
+//   - showToSameTitle: opt-in to the same-job peer network. Owners with the
+//     SAME ownerCategoryId are hidden from each other unless BOTH listings
+//     carry this true — mutual consent, so nobody is ever exposed to a
+//     same-job rival who didn't ask for it. Defaults to false, which
+//     reproduces the original "same job never appears" behaviour exactly.
 //
 // Design rules (Blueprint §14):
 //   - Immutable. All fields final.
@@ -37,6 +42,7 @@ class MarketplaceListing {
     required this.discoverable,
     required this.openCategories,
     required this.updatedAt,
+    this.showToSameTitle = false,
     this.tagline,
     this.averageRating,
   });
@@ -50,6 +56,10 @@ class MarketplaceListing {
   final bool discoverable;
   final List<String> openCategories;
   final DateTime updatedAt;
+
+  /// Whether this owner wants to appear to (and see) other owners in the
+  /// same job. Mutual opt-in — see the file header.
+  final bool showToSameTitle;
   final String? tagline;
   final double? averageRating;
 
@@ -66,6 +76,7 @@ class MarketplaceListing {
         json['open_categories'] as List<dynamic>? ?? [],
       ),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      showToSameTitle: json['show_to_same_title'] as bool? ?? false,
       tagline: json['tagline'] as String?,
       averageRating: (json['average_rating'] as num?)?.toDouble(),
     );
@@ -81,6 +92,7 @@ class MarketplaceListing {
       'owner_category_id': ownerCategoryId,
       'discoverable': discoverable,
       'open_categories': openCategories,
+      'show_to_same_title': showToSameTitle,
       'updated_at': updatedAt.toIso8601String(),
       if (tagline != null) 'tagline': tagline,
       if (averageRating != null) 'average_rating': averageRating,
@@ -97,6 +109,7 @@ class MarketplaceListing {
     bool? discoverable,
     List<String>? openCategories,
     DateTime? updatedAt,
+    bool? showToSameTitle,
     String? tagline,
     double? averageRating,
   }) {
@@ -110,6 +123,7 @@ class MarketplaceListing {
       discoverable: discoverable ?? this.discoverable,
       openCategories: openCategories ?? this.openCategories,
       updatedAt: updatedAt ?? this.updatedAt,
+      showToSameTitle: showToSameTitle ?? this.showToSameTitle,
       tagline: tagline ?? this.tagline,
       averageRating: averageRating ?? this.averageRating,
     );
@@ -118,5 +132,6 @@ class MarketplaceListing {
   @override
   String toString() =>
       'MarketplaceListing(id: $id, platform: $platformId, '
-      'category: $ownerCategoryId, discoverable: $discoverable)';
+      'category: $ownerCategoryId, discoverable: $discoverable, '
+      'showToSameTitle: $showToSameTitle)';
 }

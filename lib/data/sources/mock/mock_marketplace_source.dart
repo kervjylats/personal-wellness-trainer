@@ -11,15 +11,22 @@
 //     All category references come from config IDs (yoga_studio, pilates_studio, …).
 //
 // Filtering rules enforced here (Blueprint §18 Hardcoded Rules):
-//   Rule 1: Same-category owners NEVER appear in each other's results.
+//   Rule 1: Same-category owners are hidden from each other UNLESS both
+//           listings opted in to the same-job peer network
+//           (showToSameTitle — mutual consent, default off).
 //   Rule 2: Filled category slots (active agreement exists) are auto-locked.
 //   Rule 3: Only discoverable owners with openCategories are listed.
+//   Rule 4: Jobs the viewer already holds an ACTIVE agreement for are
+//           excluded entirely — an owner with a standing partner in a job
+//           is never shopped around in that same job.
 //
 // Compatibility checking is NOT done here — done in MarketplaceNotifier
 // before any request is sent, keeping this source dumb.
 //
 // Seed data: 5 mock "other owners" on the platform, each with different
-// ownerCategoryId values, so the filtering rules are exercised.
+// ownerCategoryId values, so the filtering rules are exercised. One of
+// them (the meditation teacher) carries showToSameTitle: true so the
+// same-job opt-in path has a counterpart to be discovered by.
 
 import 'package:personal_wellness_trainer/data/models/marketplace_listing.dart';
 import 'package:personal_wellness_trainer/data/models/partnership_request.dart';
@@ -77,14 +84,22 @@ class MockMarketplaceSource with MockSourceMixin implements MarketplaceRepositor
     required String viewerOwnerUserId,
     required String viewerCategoryId,
     required List<String> desiredCategories,
+    required bool viewerShowsToSameTitle,
+    required Set<String> coveredCategories,
   }) async {
     await simulateNetworkDelay();
 
     return _listings.where((listing) {
       if (listing.ownerUserId == viewerOwnerUserId) return false;
-      if (listing.ownerCategoryId == viewerCategoryId) return false;
       if (!listing.discoverable) return false;
       if (desiredCategories.isEmpty) return false;
+      // Rule 4 — the viewer already has a standing agreement in this job.
+      if (coveredCategories.contains(listing.ownerCategoryId)) return false;
+      // Rule 1 — same-job peers need BOTH listings to have opted in.
+      if (listing.ownerCategoryId == viewerCategoryId &&
+          !(viewerShowsToSameTitle && listing.showToSameTitle)) {
+        return false;
+      }
       if (!desiredCategories.contains(listing.ownerCategoryId)) return false;
       return true;
     }).toList()
@@ -188,7 +203,9 @@ class MockMarketplaceSource with MockSourceMixin implements MarketplaceRepositor
         tagline: 'Strengthen your core, lengthen your spine.',
         averageRating: 4.7,
       ),
-      // Meditation teacher, discoverable, open for yoga and reiki
+      // Meditation teacher, discoverable, open for yoga and reiki.
+      // Opted in to the same-job peer network — a second meditation
+      // teacher can therefore be discovered by this one.
       MarketplaceListing(
         id: 'mkt_mock_003',
         platformId: 'platform_003',
@@ -198,6 +215,7 @@ class MockMarketplaceSource with MockSourceMixin implements MarketplaceRepositor
         ownerCategoryId: 'meditation_teacher',
         discoverable: true,
         openCategories: const ['yoga_studio', 'reiki_practitioner'],
+        showToSameTitle: true,
         updatedAt: now.subtract(const Duration(days: 5)),
         tagline: 'Guided meditations for inner peace.',
         averageRating: 4.2,

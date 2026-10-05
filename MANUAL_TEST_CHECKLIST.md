@@ -182,6 +182,33 @@ page after every rebuild).
 
 ---
 
+## 🧭 Journey G — Marketplace discovery: who sees whom (2 businesses)
+
+> Needs **two owner accounts** (Journey D's second business works). Rules:
+> mutual same-job opt-in, and Active agreements cover a job on both sides.
+
+- [ ] **G1 — same-job switch starts OFF.** Sign in as business B →
+      **Marketplace** → *My Availability*: "Visible to owners with the same
+      job" is **off**, and B's own trade row is greyed with the reason
+      ("Turn on … to offer your own trade"), not missing — *notes:*
+- [ ] **G2 — mutual opt-in only.** Switch B's on → B's own trade row becomes
+      tappable and B's own job can be opened as a slot. Leave A's switch
+      **off**: as A, scroll the marketplace and confirm you do **not** see
+      B's listing among owners in your shared trade (one-sided opt-in shows
+      nothing). Switch A's on too → B appears — *notes:*
+- [ ] **G3 — a covered job stops being advertised.** With an **Active**
+      collab covering some job: on your own card that slot reads "Already
+      in a Collab in this category" and can't be turned on; in discovery,
+      every business offering that job is gone — **including your own
+      partner** (they're still in your partners list) — *notes:*
+- [ ] **G4 — pending hides nothing.** A merely *proposed/pending* agreement
+      does not grey any slot and does not hide anyone — *notes:*
+- [ ] **G5 — switches are named.** Tab (or a screen reader) through
+      *My Availability*: each switch announces its row title
+      ("Yoga Studio switch"), never a bare "switch" — *notes:*
+
+---
+
 ## 💬 Your verdict
 
 - **Overall vibe (would you actually use this?):** ___

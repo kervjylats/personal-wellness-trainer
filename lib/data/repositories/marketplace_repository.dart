@@ -20,10 +20,23 @@ abstract class MarketplaceRepository {
 
   Future<MarketplaceListing> upsertListing(MarketplaceListing listing);
 
+  /// Returns the listings [viewerOwnerUserId] is allowed to discover.
+  ///
+  /// The two extra gates beyond the historical self/discoverable/slot-match
+  /// rules are passed in as data rather than computed here, so every source
+  /// applies an identical predicate:
+  ///   - [viewerShowsToSameTitle] — the viewer's own same-job opt-in. A
+  ///     listing whose ownerCategoryId equals [viewerCategoryId] is only
+  ///     returned when BOTH sides opted in.
+  ///   - [coveredCategories] — job ids the viewer already holds an ACTIVE
+  ///     agreement for. Every listing in those jobs is hidden, so an owner
+  ///     with an existing partner is never shopped around (Blueprint §18).
   Future<List<MarketplaceListing>> getDiscoverableListings({
     required String viewerOwnerUserId,
     required String viewerCategoryId,
     required List<String> desiredCategories,
+    required bool viewerShowsToSameTitle,
+    required Set<String> coveredCategories,
   });
 
   Future<List<PartnershipRequest>> getSentRequests(String senderOwnerUserId);

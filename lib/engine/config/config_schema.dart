@@ -416,6 +416,8 @@ class ConfigMarketplace {
     required this.showRating,
     required this.showTagline,
     required this.requestMessageRequired,
+    required this.sameTitleVisibilityDefault,
+    required this.sameTitleVisibilityOwnerCanToggle,
   });
 
   /// Master switch — when false the marketplace entry point is hidden.
@@ -433,6 +435,15 @@ class ConfigMarketplace {
   /// When true, a non-empty message is required before sending a request.
   final bool requestMessageRequired;
 
+  /// Starting state of a business's "visible to owners with the same job"
+  /// switch. False (the default) means same-job owners stay hidden until
+  /// each of them deliberately opts in.
+  final bool sameTitleVisibilityDefault;
+
+  /// Whether the owner may change that switch themselves. When false the
+  /// platform default above is binding and the toggle is rendered read-only.
+  final bool sameTitleVisibilityOwnerCanToggle;
+
   factory ConfigMarketplace.fromJson(Map<String, dynamic> json) {
     return ConfigMarketplace(
       enabled:                json['enabled'] as bool? ?? true,
@@ -440,6 +451,10 @@ class ConfigMarketplace {
       showRating:             json['show_rating'] as bool? ?? true,
       showTagline:            json['show_tagline'] as bool? ?? true,
       requestMessageRequired: json['request_message_required'] as bool? ?? false,
+      sameTitleVisibilityDefault:
+          json['same_title_visibility_default'] as bool? ?? false,
+      sameTitleVisibilityOwnerCanToggle:
+          json['same_title_visibility_owner_can_toggle'] as bool? ?? true,
     );
   }
 
@@ -450,6 +465,8 @@ class ConfigMarketplace {
     showRating: true,
     showTagline: true,
     requestMessageRequired: false,
+    sameTitleVisibilityDefault: false,
+    sameTitleVisibilityOwnerCanToggle: true,
   );
 }
 

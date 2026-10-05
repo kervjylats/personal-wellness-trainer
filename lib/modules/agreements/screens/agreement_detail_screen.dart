@@ -11,6 +11,7 @@ import 'package:personal_wellness_trainer/core/utils/formatters.dart';
 import 'package:personal_wellness_trainer/data/models/agreement_model.dart';
 import 'package:personal_wellness_trainer/engine/config/jobs_config_provider.dart';
 import 'package:personal_wellness_trainer/modules/agreements/providers/agreements_notifier.dart';
+import 'package:personal_wellness_trainer/modules/agreements/providers/marketplace_notifier.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/transaction_notifier.dart';
 
 class AgreementDetailScreen extends ConsumerWidget {
@@ -211,7 +212,12 @@ class _AgreementActionsState extends ConsumerState<_AgreementActions> {
     final ok = await action();
     if (!mounted) return;
     setState(() => _busy = false);
-    if (ok && context.mounted) Navigator.of(context).pop();
+    if (!ok || !context.mounted) return;
+    // Approving (or ending) an agreement changes which jobs this owner is
+    // covered for, and the marketplace filters discovery by exactly that set
+    // (Rule 4). Drop its cached state so the next visit isn't stale.
+    ref.invalidate(marketplaceNotifierProvider);
+    Navigator.of(context).pop();
   }
 }
 

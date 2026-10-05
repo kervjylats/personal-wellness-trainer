@@ -16,8 +16,16 @@ class MockAgreementsSource with MockSourceMixin implements AgreementsRepository 
   static const String _businessId = 'biz_mock_001';
 
   // Simulated in-memory store.
-  static final List<AgreementModel> _store = _buildSeedData();
+  static List<AgreementModel> _store = _buildSeedData();
   static int _idCounter = 10;
+
+  /// Restores the seed agreements. The store is process-wide (two test files
+  /// plus the running app share it), so without this an agreement created in
+  /// one test silently changes discovery/finance results in the next.
+  static void resetForTesting() {
+    _store = _buildSeedData();
+    _idCounter = 10;
+  }
 
   // ── Read ──────────────────────────────────────────────────────────────────────
 

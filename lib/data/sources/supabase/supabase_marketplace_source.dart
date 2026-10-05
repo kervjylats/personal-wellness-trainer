@@ -49,21 +49,38 @@ class SupabaseMarketplaceSource implements MarketplaceRepository {
     required String viewerOwnerUserId,
     required String viewerCategoryId,
     required List<String> desiredCategories,
+    required bool viewerShowsToSameTitle,
+    required Set<String> coveredCategories,
   }) async {
     if (desiredCategories.isEmpty) return [];
 
+    // The query deliberately no longer excludes `viewer_category_id`:
+    // same-job peers are now a legitimate result (mutual opt-in), so
+    // which of those rows survive is decided by the two gates below.
     final rows = await _db
         .from('marketplace_listings')
         .select()
         .eq('discoverable', true)
         .neq('owner_user_id', viewerOwnerUserId)
-        .neq('owner_category_id', viewerCategoryId)
         .inFilter('owner_category_id', desiredCategories)
         .order('updated_at', ascending: false);
 
-    return (rows as List)
+    final listings = (rows as List)
         .map((r) => MarketplaceListing.fromJson(r as Map<String, dynamic>))
         .toList();
+
+    // PHASE 10: move both gates server-side (RLS view or RPC) so the row
+    // set never leaves the database. They are applied here in Dart — not
+    // silently omitted — so this source keeps the same semantics the mock
+    // is actually tested against today.
+    return listings.where((listing) {
+      if (coveredCategories.contains(listing.ownerCategoryId)) return false;
+      if (listing.ownerCategoryId == viewerCategoryId &&
+          !(viewerShowsToSameTitle && listing.showToSameTitle)) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
 
   @override
