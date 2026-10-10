@@ -25,6 +25,11 @@ to understand this — just what changed and why.
 4. **Two new regression tests** pin the invite→deal chain (the link
    carries the trade; the joined profile keeps it), so this dead-end
    can't quietly come back.
+5. **Deal status pills are real buttons now.** The "1 Pending" / "1
+   Active" pills on the dashboard's My Deal / Active Partnerships cards
+   are properly announced as buttons to screen readers (before, they
+   were invisible to assistive tech — Flutter merged their text into the
+   surrounding card, so nothing reported them as tappable at all).
 
 **Verified:** `flutter analyze` clean, `flutter test` 200/200, full test
 rig 50/52 (the two known historical dead-end steps, now fixed in-app —

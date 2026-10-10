@@ -91,11 +91,13 @@ page after every rebuild).
 - [ ] **C3** Associate side: Network shows the **Owner card** (not
       "No owner yet") — *notes:*
 - [ ] **C4** That Associate can **invite a client** — *notes:*
-- [ ] **C5** Owner: Network → "Propose a deal" banner → pick the associate →
-      **Send** — *notes:*
-- [ ] **C6** 🚧 **Robot BLOCKED (Step 9):** sign out → sign in as the
-      Associate → the proposed deal **appears** → **Accept / Decline** both
-      work. What does the accept screen look like? — *notes:*
+- [ ] **C5** Owner: Network → "Propose a deal" banner → pick the associate
+      (shown with their trade, e.g. "(yoga_studio)" — not "(no category)")
+      → **Send** → form closes, deal delivered — *notes:*
+- [ ] **C6** Sign out → sign in as the Associate → Home dashboard **"My
+      Deal"** card shows **1 Pending** → tap the pill → deal detail opens
+      (notes visible) → **Approve** → returns to dashboard, pill flips to
+      **Active**; **Decline** path works the same way — *notes:*
 
 ---
 

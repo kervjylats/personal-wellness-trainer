@@ -80,15 +80,25 @@ Widget _tappableCount({
   required Widget child,
 }) {
   if (target == null) return child;
-  return InkWell(
-    onTap: () => context.pushNamed(routeName, extra: target),
-    borderRadius: BorderRadius.circular(AppSpacing.sm),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+  // Semantics(button: true): the InkWell tap target was invisible to
+  // assistive tech AND to the test harness — Flutter merged the pill's
+  // plain Text into the parent card's aggregate semantics node, so no
+  // interactive element was exposed at all. Screen readers now announce
+  // a real button ("1 Pending, button") and it can be activated like
+  // any other control.
+  return Semantics(
+    button: true,
+    container: true,
+    child: InkWell(
+      onTap: () => context.pushNamed(routeName, extra: target),
+      borderRadius: BorderRadius.circular(AppSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: child,
       ),
-      child: child,
     ),
   );
 }
