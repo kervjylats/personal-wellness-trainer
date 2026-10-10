@@ -13,6 +13,13 @@ rem
 rem This server only exists to open the RELEASE build in a browser or for
 rem the test harness. Port 9090 because 8080 belongs to the LocalAI hub's
 rem `big` slot (see C:\LocalAI\hub_server.py SLOT_PORTS).
+rem
+rem Which backend the build talks to is decided at BUILD time
+rem (lib/engine/config/data_config.dart):
+rem   flutter build web                                  -^> mock data (default)
+rem   flutter build web --dart-define=USE_MOCK_DATA=false ^
+rem     --dart-define=SUPABASE_URL=https://xxx.supabase.co ^
+rem     --dart-define=SUPABASE_ANON_KEY=xxxxx            -^> live Supabase
 rem ============================================================================
 setlocal
 set PORT=9090

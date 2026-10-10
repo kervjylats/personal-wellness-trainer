@@ -3,7 +3,34 @@
 A plain-English summary of everything fixed. You don't need to read the code
 to understand this — just what changed and why.
 
-## Latest — Round 7 — who can see you in the marketplace
+## Latest — Round 8 — the invite → deal flow actually works now
+
+1. **Associates who join by your invite link can immediately receive a
+   deal.** The Network invite link now carries your own trade along with
+   it, so the new associate's profile arrives with a category instead of
+   an empty one. Before this, inviting someone from Network and then
+   trying to propose a deal to them went nowhere: the form showed
+   "(no category)" and the Send button quietly did nothing, every time.
+2. **If a deal can't be sent, the app says so.** The Propose Agreement
+   screen's Send button used to fail silently when something was missing.
+   It now shows a clear error explaining what — e.g. that the associate
+   needs to be re-invited so their profile has a category — instead of
+   looking like it worked.
+3. **One switch decides where all data lives — mock or real.** A single
+   build flag (`USE_MOCK_DATA`, on by default) routes every feature
+   between the in-memory mock store and the real Supabase backend, so
+   testing stays in mock until the real database is deliberately
+   provisioned. Build commands for both modes are documented at the top
+   of `serve.bat` and in `lib/engine/config/data_config.dart`.
+4. **Two new regression tests** pin the invite→deal chain (the link
+   carries the trade; the joined profile keeps it), so this dead-end
+   can't quietly come back.
+
+**Verified:** `flutter analyze` clean, `flutter test` 200/200, full test
+rig 50/52 (the two known historical dead-end steps, now fixed in-app —
+the rig's expectations are being updated to match).
+
+## Round 7 — who can see you in the marketplace
 
 1. **Your own job stays hidden until you say otherwise.** The Marketplace
    "My Availability" card gained a switch: *Visible to owners with the same

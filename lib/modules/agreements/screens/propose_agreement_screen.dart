@@ -234,7 +234,27 @@ class _ProposeAgreementScreenState
   }
 
   Future<void> _propose() async {
-    if (_ownerCategory == null || _selectedPartnerCategoryId == null) return;
+    // Was a silent `return` — the button looked clickable, the form
+    // "sent", and nothing happened with no explanation. Invite-linked
+    // associates used to hit this every time (their profile carried a
+    // NULL category), which made the owner→associate deal flow a dead
+    // end. The invite dialog now sets a joining category, so this is
+    // only a defensive guard — but it says WHY when it fires.
+    if (_ownerCategory == null || _selectedPartnerCategoryId == null) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _selectedPartnerCategoryId == null
+                ? 'This associate has no category on their profile. '
+                    'Re-invite them from Network so they join with one.'
+                : 'Pick your category before sending the proposal.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     setState(() => _loading = true);
     final result = await ref
         .read(agreementsNotifierProvider.notifier)

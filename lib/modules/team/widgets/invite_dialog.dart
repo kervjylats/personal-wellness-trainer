@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
+import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
 import 'package:personal_wellness_trainer/modules/invites/screens/qr_invite_dialog.dart';
@@ -36,9 +38,20 @@ class _InviteDialogState extends ConsumerState<InviteDialog> {
       _error = null;
     });
 
+    // The invite link carries the inviter's own category as the new
+    // member's joining trade. Without it the invitee's profile lands
+    // with a NULL category, and the Propose Agreement screen silently
+    // refuses to send anything for them (its partner category guard),
+    // which made the whole owner→associate deal flow a dead end.
+    // The invitee can still change their trade later from their own
+    // onboarding/settings; this only sets the sensible default.
+    final auth = ref.read(authNotifierProvider);
+    final categoryId =
+        auth is AuthAuthenticated ? auth.profile.categoryId : null;
+
     final result = await ref
         .read(inviteLinkNotifierProvider.notifier)
-        .generateLink(targetRole: widget.role);
+        .generateLink(targetRole: widget.role, categoryId: categoryId);
 
     if (!mounted) return;
 
