@@ -104,22 +104,35 @@ class ChatNotifier extends AsyncNotifier<List<ConversationModel>> {
     final auth = ref.read(authNotifierProvider);
     if (auth is! AuthAuthenticated) throw Exception('Not authenticated');
 
-    // Look for an existing community conversation (type='community')
+    // Fast path: already loaded in this provider's state.
     final conversations = state.valueOrNull ?? [];
-    final existing = conversations.where((c) => c.type == 'community').firstOrNull;
-    if (existing != null) return existing;
+    final inMemory = conversations.where((c) => c.type == 'community').firstOrNull;
+    if (inMemory != null) return inMemory;
 
-    // Create the community feed
+    // Authoritative check against the repository (M6): the local state
+    // resets whenever the provider rebuilds (invalidateSelf / fresh
+    // session), and the old code only ever checked memory — so every
+    // remount minted ANOTHER 'Community Feed' row. The type is now
+    // persisted ('community' is in the conversations.type check), so one
+    // DB query finds the existing row.
+    final existing = await _repo.getConversations(
+      auth.profile.businessId,
+      auth.profile.userId,
+    );
+    final fromDb = existing.where((c) => c.type == 'community').firstOrNull;
+    if (fromDb != null) return fromDb;
+
+    // Create the community feed — once. The type travels with the INSERT
+    // instead of being patched on in memory afterwards.
     final conversation = await _repo.createGroupConversation(
       businessId: auth.profile.businessId,
       creatorId: auth.profile.userId,
       groupName: 'Community Feed',
       participantIds: [auth.profile.userId],
       participantNames: [auth.profile.displayName],
+      type: 'community',
     );
-    // Set type to community (we'll need to update the model or add a flag)
-    final communityConv = conversation.copyWith(type: 'community');
     ref.invalidateSelf();
-    return communityConv;
+    return conversation;
   }
 }

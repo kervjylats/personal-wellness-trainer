@@ -53,6 +53,19 @@ begin
         select * into v_link from public.invite_links where token = v_code;
 
         if v_link.id is not null then
+            -- M12: enforce expiry/uses SERVER-SIDE, not just in the Dart
+            -- accept screen. Raising here aborts the whole signup
+            -- transaction (same shape as the activation-key guards
+            -- below), so a direct /auth/v1/signup call with a dead token
+            -- can't mint a profile either. max_uses = 0 means unlimited,
+            -- matching InviteLinkModel.isExhausted.
+            if v_link.expires_at is not null and v_link.expires_at < now() then
+                raise exception 'This invite link has expired';
+            end if;
+            if v_link.max_uses > 0 and v_link.use_count >= v_link.max_uses then
+                raise exception 'This invite link has already been used';
+            end if;
+
             v_resolved_business_id := v_link.business_id;
             v_resolved_role := v_link.target_role;
             v_resolved_category_id := v_link.category_id;
@@ -68,6 +81,24 @@ begin
                     v_resolved_primary_partner_id := coalesce(v_inviter.primary_partner_id, v_link.invited_by_user_id);
                 else
                     v_resolved_primary_partner_id := v_link.invited_by_user_id;
+                end if;
+
+                -- M9: referral bonus — the client dashboard promises
+                -- "share this link; when they join they earn you loyalty
+                -- points," and no call site anywhere ever awarded them
+                -- (addPoints had zero callers in either mode). Awarded
+                -- here, in the same transaction as the join, so it can't
+                -- fire without the join actually happening (or twice if
+                -- the signup is retried — the whole transaction
+                -- rolls back together). Same 100 points and reason as
+                -- the mock's seeded referral entry.
+                if v_inviter.user_id is not null then
+                    insert into public.loyalty_point_transactions (user_id, business_id, reason, amount)
+                        values (v_inviter.user_id, v_inviter.business_id, 'Referred a friend', 100);
+                    insert into public.loyalty_points (user_id, business_id, total_points)
+                        values (v_inviter.user_id, v_inviter.business_id, 100)
+                        on conflict (user_id) do update
+                        set total_points = loyalty_points.total_points + 100;
                 end if;
             end if;
 
@@ -186,12 +217,17 @@ $$ language plpgsql security definer;
 -- before they have any session) can resolve a token to its link row —
 -- WITHOUT a public RLS policy that would let anyone enumerate every
 -- business's invite links via a plain table SELECT. Only returns the one
--- row matching the exact token passed in.
+-- row matching the exact token passed in. Expired/exhausted links return
+-- NO row (M12): policy is enforced at the read, not just in the app's
+-- Dart validation layer.
 create or replace function public.get_invite_link_by_token(p_token text)
 returns setof public.invite_links as $$
 begin
     return query
-    select * from public.invite_links where token = p_token;
+    select * from public.invite_links
+     where token = p_token
+       and (expires_at is null or expires_at > now())
+       and (max_uses <= 0 or use_count < max_uses);
 end;
 $$ language plpgsql security definer;
 
@@ -231,6 +267,16 @@ declare
 begin
     select * into v_link from public.invite_links where token = p_code;
     if v_link.id is not null then
+        -- The preview must not vouch for a dead link (M12) — same
+        -- predicate the lookup and redemption paths now enforce.
+        if v_link.expires_at is not null and v_link.expires_at < now() then
+            return query select 'invalid'::text, null::text, null::text, 'This invite link has expired'::text;
+            return;
+        end if;
+        if v_link.max_uses > 0 and v_link.use_count >= v_link.max_uses then
+            return query select 'invalid'::text, null::text, null::text, 'This invite link has already been used'::text;
+            return;
+        end if;
         select p.business_name into v_owner_business_name
             from public.profiles p
             where p.role = 'owner' and p.business_id = v_link.business_id
@@ -630,6 +676,7 @@ declare
     v_buyer public.profiles;
     v_commission double precision;
     v_sale_id uuid;
+    v_points integer;
 begin
     if auth.uid() is distinct from p_buyer_user_id then
         raise exception 'Not authorized to purchase for another user';
@@ -670,6 +717,151 @@ begin
         );
     end if;
 
+    -- M9: the buyer earns loyalty points on their purchase — 1 point per
+    -- currency unit, same shape as the mock's seeded earn reasons.
+    -- Awarded INSIDE this definer transaction because the obvious
+    -- alternative, calling add_loyalty_points() from Dart, is owner-only
+    -- and would reject the client-buyer awarding points to themselves.
+    -- The balance row is stamped with the BUYER's own business — that is
+    -- the key their loyalty screen reads (profile.businessId), not the
+    -- seller's ledger.
+    v_points := floor(p_amount)::integer;
+    if v_points > 0 and v_buyer.user_id is not null then
+        insert into public.loyalty_point_transactions (user_id, business_id, reason, amount)
+            values (p_buyer_user_id, v_buyer.business_id,
+                    'Purchase reward: "' || p_item_title || '"', v_points);
+        insert into public.loyalty_points (user_id, business_id, total_points)
+            values (p_buyer_user_id, v_buyer.business_id, v_points)
+            on conflict (user_id) do update
+            set total_points = loyalty_points.total_points + v_points;
+    end if;
+
     return v_sale_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ── 15. MEMBER DEACTIVATION RECOVERY (M10) ──────────────────────────────────
+-- removeMember() sets profiles.is_active = false, but the profiles SELECT
+-- policy (`is_active = true`) hides that row from EVERYONE — including the
+-- owner who deactivated it. Without these two functions there is no way to
+-- see or undo a removal anywhere in the app: a soft delete dressed up as a
+-- permanent lockout (the removed user's sign-in also lost their own row;
+-- the self-read exception in schema.sql handles that half).
+-- Both functions are owner-gated: only the business owner may list or
+-- toggle members, mirroring the profiles UPDATE policy for removal.
+
+create or replace function public.get_deactivated_members(p_business_id uuid)
+returns setof public.profiles as $$
+begin
+    if not exists (
+        select 1 from public.profiles
+         where user_id = auth.uid()
+           and business_id = p_business_id
+           and role = 'owner'
+           and is_active = true
+    ) then
+        raise exception 'Only the business owner can list deactivated members';
+    end if;
+
+    return query
+    select * from public.profiles
+     where business_id = p_business_id
+       and is_active = false;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function public.set_member_active(
+    p_user_id uuid,
+    p_business_id uuid,
+    p_active boolean
+) returns boolean as $$
+declare
+    v_owner public.profiles;
+begin
+    if not exists (
+        select 1 from public.profiles
+         where user_id = auth.uid()
+           and business_id = p_business_id
+           and role = 'owner'
+           and is_active = true
+    ) then
+        raise exception 'Only the business owner can restore members';
+    end if;
+
+    -- WITH-CHECK-style guard: the target must belong to the owner's
+    -- business, so this can never reactivate someone else's row.
+    update public.profiles
+       set is_active = p_active
+     where user_id = p_user_id
+       and business_id = p_business_id;
+
+    return found;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ── 16. NOTIFY USER (M5) ─────────────────────────────────────────────────────
+-- Notifications were never created anywhere in real mode: the repository
+-- had no write method at all (the bell only ever showed seeds in mock and
+-- stayed empty in real). Engine events notify someone ELSE, and some of
+-- those relationships are cross-business (marketplace collab accepted,
+-- referral sale), where the direct insert policy ('member of the
+-- notification's business') rejects the caller. This SECURITY DEFINER
+-- function derives and validates the relationship server-side:
+--   · same business → always allowed;
+--   · different businesses → only if their two businesses share an
+--     agreement row (the same relationship the cross-tenant finance and
+--     agreement flows rely on).
+-- The business stamp is always the RECIPIENT's own business — that is the
+-- read key their getNotifications() query filters on, and a caller can't
+-- plant notifications under an arbitrary business.
+create or replace function public.notify_user(
+    p_user_id uuid,
+    p_business_id uuid,
+    p_type text,
+    p_title text,
+    p_body text,
+    p_reference_id uuid default null,
+    p_reference_type text default null
+) returns uuid as $$
+declare
+    v_caller_business uuid;
+    v_target_business uuid;
+    v_id uuid;
+begin
+    if auth.uid() is null then
+        raise exception 'Not authenticated';
+    end if;
+
+    select business_id into v_caller_business
+      from public.profiles where user_id = auth.uid();
+    select business_id into v_target_business
+      from public.profiles where user_id = p_user_id;
+
+    if v_target_business is null then
+        raise exception 'Unknown recipient';
+    end if;
+    if p_business_id is distinct from v_target_business then
+        raise exception 'Notification business must match the recipient''s business';
+    end if;
+
+    if v_caller_business is distinct from v_target_business then
+        if not exists (
+            select 1 from public.agreements
+             where (business_id = v_caller_business and partner_business_id = v_target_business)
+                or (business_id = v_target_business and partner_business_id = v_caller_business)
+        ) then
+            raise exception 'No relationship with this user';
+        end if;
+    end if;
+
+    insert into public.notifications (
+        user_id, business_id, title, body, type, reference_id, reference_type
+    ) values (
+        p_user_id, v_target_business, p_title, p_body, p_type,
+        p_reference_id, p_reference_type
+    )
+    returning id into v_id;
+
+    return v_id;
 end;
 $$ language plpgsql security definer set search_path = public;

@@ -17,7 +17,16 @@ class SupabaseAuthSource implements AuthRepository {
       throw Exception('Sign-in failed. User not found.');
     }
 
-    return _fetchProfile(response.user!.id);
+    final profile = await _fetchProfile(response.user!.id);
+    // M10: the profiles row is now self-readable even when deactivated
+    // (schema.sql SELECT policy), so we can tell the user WHY instead of
+    // surfacing a raw PGRST116 "no rows" crash from _fetchProfile.
+    if (!profile.isActive) {
+      throw Exception(
+        'Your access to this business was removed. Ask the owner to restore your account.',
+      );
+    }
+    return profile;
   }
 
   @override
@@ -54,7 +63,12 @@ class SupabaseAuthSource implements AuthRepository {
     if (session == null) return null;
     
     try {
-      return await _fetchProfile(session.user.id);
+      final profile = await _fetchProfile(session.user.id);
+      // M10: a deactivated member's stored session resolves to a
+      // readable-but-inactive profile; drop it to signed-out rather
+      // than restoring a session the app must now police everywhere.
+      if (!profile.isActive) return null;
+      return profile;
     } catch (_) {
       return null;
     }
@@ -75,6 +89,13 @@ class SupabaseAuthSource implements AuthRepository {
     await _db.from('profiles').update({
       'business_name': updatedProfile.businessName,
       'selected_category': updatedProfile.selectedCategory,
+      // Phase C2 (M7): category_id used to be skipped here while the
+      // auth notifier's comment claimed setOnboardingComplete covered it
+      // — it didn't, so real-mode owners read back null categoryId and
+      // every downstream flow (invite links, marketplace discovery)
+      // silently operated on an empty category. Both columns are
+      // granted on profiles in schema.sql and always hold the same value.
+      'category_id': updatedProfile.categoryId,
       'primary_color': updatedProfile.primaryColor,
       'job_id': updatedProfile.jobId,
       // The Owner's own marketing copy. Columns added in schema.sql
@@ -141,7 +162,15 @@ class SupabaseAuthSource implements AuthRepository {
         .select()
         .eq('user_id', userId)
         .single();
-        
+
+    // Rows written before the M7 fix (or by handle_new_user's activation
+    // branch) only set selected_category — mirror the team source's
+    // `category_id ?? selected_category` fallback so those profiles read
+    // back with a usable categoryId instead of null.
+    if (data['category_id'] == null && data['selected_category'] != null) {
+      data['category_id'] = data['selected_category'];
+    }
+
     return UserProfile.fromJson(data);
   }
 }

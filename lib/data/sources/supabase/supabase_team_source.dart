@@ -12,36 +12,33 @@
 // TeamMemberModel the same way SupabaseAuthSource maps them to
 // UserProfile.
 //
-// ── inviteMember() IS NOT IMPLEMENTED — READ THIS BEFORE CALLING IT ──
-// profiles.user_id has a hard foreign-key constraint to auth.users. A
-// team member cannot exist without a real Supabase Auth account already
-// existing for them. But TeamRepository.inviteMember()'s signature never
-// receives an invitee user_id — it was designed around MockTeamSource's
-// single-step model, where the mock invents a whole new identity out of
-// nothing because it has no real auth system underneath it.
+// ── inviteMember() — the invite-LINK path (M11) ──────────────────────────────
+// There is no separate "team_members" table. The team roster and the auth
+// profile are the SAME row: public.profiles (see schema.sql). A profiles
+// row has a hard foreign key to auth.users, so a team member cannot exist
+// until the invitee creates their own Supabase Auth account.
 //
-// In real Supabase mode, accepting an invite genuinely has to be a
-// TWO-step flow: (1) the invitee signs up for real via
-// Supabase Auth (creating their own auth.users row, which the
-// on_auth_user_created trigger turns into a fresh profiles row with a
-// default role/business_id), then (2) something reassigns that row's
-// role/business_id/primary_partner_id to match the actual invite they
-// clicked. Step 2 is what a real inviteMember() should do — but it needs
-// an inviteeUserId parameter that doesn't exist on this interface yet,
-// and accept_invitation_screen.dart itself doesn't call Supabase Auth at
-// all currently (it's fully mock-shaped — see its own file). Fixing
-// that screen is a separate piece of work from this repository file.
+// In real mode, "inviting" someone therefore means creating an INVITE
+// LINK — the invite_links row the invitee redeems through
+// accept_invitation_screen, whose handle_new_user() trigger then resolves
+// role/business/category/referral-chain server-side. That is what this
+// method does now: it creates the link and returns a PENDING (not
+// persisted) TeamMemberModel carrying the link's token as the
+// acknowledgment, so callers get the same member-shaped result the mock
+// path returns. The pending model's userId is prefixed 'pending_' and its
+// inviteToken is set — it is an in-memory acknowledgment only, never a
+// profiles row, and disappears on the next roster refresh (by which time
+// either the invitee has signed up — a real row — or the invite is still
+// outstanding in the links list).
 //
-// Rather than silently insert a row with a fabricated user_id (which
-// would just hard-fail at the database level against the FK constraint,
-// or worse, succeed with a `deterministicUuid`-style fake id that never
-// matches a real signed-in user, quietly breaking auth), this throws a
-// clear, actionable error so the gap is visible instead of a confusing
-// runtime crash somewhere else.
+// What it deliberately does NOT do: insert a profiles row with a
+// fabricated user_id. That either hard-fails the auth.users FK or
+// succeeds as a phantom identity that no real sign-in ever matches.
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:personal_wellness_trainer/data/models/team_member_model.dart';
 import 'package:personal_wellness_trainer/data/repositories/team_repository.dart';
+import 'package:personal_wellness_trainer/data/sources/supabase/supabase_invite_source.dart';
 
 class SupabaseTeamSource implements TeamRepository {
   final SupabaseClient _db = Supabase.instance.client;
@@ -70,13 +67,37 @@ class SupabaseTeamSource implements TeamRepository {
     String? email,
     String? categoryId,
   }) async {
-    throw UnimplementedError(
-      'SupabaseTeamSource.inviteMember() needs accept_invitation_screen.dart '
-      'to actually create a real Supabase Auth account first (it currently '
-      "doesn't), and this interface needs an inviteeUserId parameter to know "
-      'which resulting profiles row to reassign. See this file\'s header '
-      'comment for the full explanation — this is a real, flagged gap, not '
-      'an oversight to work around.',
+    // M11: real-mode invite = create the invite link (see this file's
+    // header). invited_by_role is NOT NULL on invite_links and the
+    // caller's own role isn't in the method signature, so read it off
+    // the caller's profiles row — always readable, the caller is a
+    // member of their own business.
+    final caller = await _db
+        .from('profiles')
+        .select('role')
+        .eq('user_id', invitedByUserId)
+        .single();
+
+    final link = await SupabaseInviteSource().createLink(
+      businessId: businessId,
+      invitedByUserId: invitedByUserId,
+      invitedByRole: caller['role'] as String,
+      targetRole: role,
+      categoryId: categoryId,
+      label: displayName,
+    );
+
+    return TeamMemberModel(
+      userId: 'pending_${link.token}',
+      businessId: businessId,
+      role: role,
+      displayName: displayName,
+      isActive: false,
+      joinedAt: DateTime.now(),
+      featureToggles: const {},
+      categoryId: categoryId,
+      email: email,
+      inviteToken: link.token,
     );
   }
 
@@ -117,16 +138,53 @@ class SupabaseTeamSource implements TeamRepository {
     required String memberId,
     required String businessId,
   }) async {
-    // Soft-delete, matching the RLS policy's `is_active = true` read
-    // filter — a removed member's row stays (transactions/history still
+    // Soft-delete, matching the RLS read filter's `is_active = true`
+    // default — a removed member's row stays (transactions/history still
     // reference it via FK) but stops showing up anywhere the app reads
-    // the roster from.
+    // the roster from. Note the profiles SELECT policy now carries a
+    // self-exception (M10): the removed user can still read their OWN
+    // row, so sign-in fails with a clear message instead of a PGRST116
+    // crash — but everyone else's reads keep filtering on is_active.
+    // This write works because is_active is in the column grant and the
+    // owner UPDATE policy matches by business_id regardless of the
+    // target's is_active; recovery goes through set_member_active()
+    // (getInactiveMembers/reactivateMember below) because the owner can
+    // no longer SELECT the row to target it directly.
     await _db
         .from('profiles')
         .update({'is_active': false})
         .eq('user_id', memberId)
         .eq('business_id', businessId);
     return true;
+  }
+
+  @override
+  Future<List<TeamMemberModel>> getInactiveMembers(String businessId) async {
+    // Plain .from('profiles') can't see inactive rows (RLS), so the owner
+    // lists them through the owner-gated SECURITY DEFINER function.
+    // See triggers.sql get_deactivated_members() / M10.
+    final rows = await _db.rpc('get_deactivated_members', params: {
+      'p_business_id': businessId,
+    }) as List;
+    return rows
+        .map((r) => _fromProfileRow(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<bool> reactivateMember({
+    required String memberId,
+    required String businessId,
+  }) async {
+    // SECURITY DEFINER (owner-gated + business-scoped): the row itself is
+    // invisible to RLS reads, so the owner can't target it with a raw
+    // update. See triggers.sql set_member_active() / M10.
+    final restored = await _db.rpc('set_member_active', params: {
+      'p_user_id': memberId,
+      'p_business_id': businessId,
+      'p_active': true,
+    });
+    return restored == true;
   }
 
   @override

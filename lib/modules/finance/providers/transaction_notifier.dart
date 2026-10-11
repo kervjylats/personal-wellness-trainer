@@ -15,6 +15,8 @@ import 'package:personal_wellness_trainer/modules/finance/providers/commission_n
 import 'package:personal_wellness_trainer/modules/finance/providers/finance_action_error_provider.dart';
 import 'package:personal_wellness_trainer/modules/finance/providers/finance_repo_resolver.dart';
 import 'package:personal_wellness_trainer/modules/discover/providers/partner_offers_provider.dart';
+import 'package:personal_wellness_trainer/modules/loyalty/providers/loyalty_notifier.dart';
+import 'package:personal_wellness_trainer/modules/notifications/providers/notification_notifier.dart';
 
 final transactionNotifierProvider =
     AsyncNotifierProvider<TransactionNotifier, List<TransactionModel>>(
@@ -163,6 +165,44 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
       AppLogger.info(
           'purchaseFromPartner: ${item.id} via agreement ${agreement.id}',
           tag: _tag);
+
+      // M5: the seller's side of a marketplace sale used to be silent —
+      // the sale lands on THEIR ledger (via the RPC), so tell them
+      // (best-effort; cross-business notify goes through notify_user()'s
+      // agreement-relationship check server-side).
+      await sendNotificationQuietly(
+        ref.read(notificationRepositoryProvider),
+        userId: agreement.partnerUserId,
+        businessId: agreement.partnerBusinessId,
+        type: 'system',
+        title: 'Sale recorded',
+        body: '"${item.title}" was sold via associate referral.',
+        referenceId: agreement.id,
+        referenceType: 'agreement',
+      );
+
+      // M9: mock-mode parity for the loyalty award that
+      // purchase_from_partner() makes inside its SECURITY DEFINER
+      // transaction in real mode. Deliberately DataConfig-branched:
+      // calling addPoints() unconditionally here would DOUBLE-award in
+      // real mode (and the owner-only add_loyalty_points() RPC would
+      // anyway reject a client buyer acting for themselves — that's
+      // exactly why the award lives inside the purchase RPC there).
+      if (DataConfig.useMockData && item.price.floor() > 0) {
+        try {
+          await ref.read(loyaltyRepositoryProvider).addPoints(
+            businessId: auth.profile.businessId,
+            userId: auth.profile.userId,
+            amount: item.price.floor(),
+            reason: 'Purchase reward: "${item.title}"',
+          );
+          ref.invalidate(loyaltyNotifierProvider);
+        } catch (e, st) {
+          AppLogger.error('loyalty award failed (non-fatal)',
+              tag: _tag, error: e, stackTrace: st);
+        }
+      }
+
       return true;
     } catch (e, st) {
       AppLogger.error('TransactionNotifier: purchaseFromPartner failed',

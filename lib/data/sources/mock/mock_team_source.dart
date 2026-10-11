@@ -99,7 +99,10 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
   }) async {
     await simulateNetworkDelay();
     
-    final matches = _store.where((m) => m.businessId == businessId && (role == null || m.role == role)).toList();
+    final matches = _store.where((m) =>
+            m.businessId == businessId &&
+            m.isActive &&
+            (role == null || m.role == role)).toList();
     if (matches.isEmpty) {
       // Round 6: no more "clone the seed roster onto whatever business
       // asked" safety net — a brand-new (or post-refresh) business must
@@ -209,12 +212,37 @@ class MockTeamSource with MockSourceMixin implements TeamRepository {
     required String businessId,
   }) async {
     await simulateNetworkDelay();
-    final before = _store.length;
-    
-    // Remove by exact match or by matching the default mock space fallback
-    _store.removeWhere((m) => m.userId == memberId && (m.businessId == businessId || m.businessId == _businessId));
-    
-    return _store.length < before;
+
+    // Soft-delete (M10), mirroring real mode's is_active = false — the
+    // row survives so it can be listed by getInactiveMembers() and
+    // restored by reactivateMember(); getMembers() filters it out so the
+    // roster looks exactly as it did when removal was a hard delete.
+    final i = _store.indexWhere(
+        (m) => m.userId == memberId && (m.businessId == businessId || m.businessId == _businessId));
+    if (i == -1) return false;
+    _store[i] = _store[i].copyWith(isActive: false);
+    return true;
+  }
+
+  @override
+  Future<List<TeamMemberModel>> getInactiveMembers(String businessId) async {
+    await simulateNetworkDelay();
+    return _store
+        .where((m) => m.businessId == businessId && !m.isActive)
+        .toList();
+  }
+
+  @override
+  Future<bool> reactivateMember({
+    required String memberId,
+    required String businessId,
+  }) async {
+    await simulateNetworkDelay();
+    final i = _store.indexWhere(
+        (m) => m.userId == memberId && m.businessId == businessId && !m.isActive);
+    if (i == -1) return false;
+    _store[i] = _store[i].copyWith(isActive: true);
+    return true;
   }
 
   static List<TeamMemberModel> _buildSeedData() {

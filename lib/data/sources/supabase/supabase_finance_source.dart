@@ -57,7 +57,7 @@ class SupabaseFinanceSource implements FinanceRepository {
   }
 
   @override
-  Future<TransactionModel> recordTransaction({
+  Future<void> recordTransaction({
     required String businessId,
     required double amount,
     required String currencySymbol,
@@ -73,7 +73,13 @@ class SupabaseFinanceSource implements FinanceRepository {
     String? paymentProvider,
     String? externalRef,
   }) async {
-    final row = await _db.from('transactions').insert({
+    // M8: NO `.select().single()` here. transactions' INSERT policy
+    // (any member of business_id) is wider than its SELECT policy
+    // (from/to/owner) — Postgres applies SELECT policies to RETURNING,
+    // so a partner/staff-side insert would commit but return zero rows
+    // and .single() would throw PGRST116. Write-only; callers refresh
+    // through their notifier.
+    await _db.from('transactions').insert({
       'business_id': businessId,
       'amount': amount,
       'currency_symbol': currencySymbol,
@@ -89,23 +95,21 @@ class SupabaseFinanceSource implements FinanceRepository {
       if (notes != null) 'notes': notes,
       if (paymentProvider != null) 'payment_provider': paymentProvider,
       if (externalRef != null) 'external_ref': externalRef,
-    }).select().single();
-
-    return TransactionModel.fromJson(row);
+    });
   }
 
   @override
-  Future<TransactionModel> updateTransactionStatus(
+  Future<void> updateTransactionStatus(
     String transactionId,
     String newStatus,
   ) async {
-    final row = await _db
+    // M8: same RETURNING asymmetry as recordTransaction — update without
+    // asking for the row back (a caller outside the row's SELECT policy
+    // would get PGRST116 after the update already committed).
+    await _db
         .from('transactions')
         .update({'status': newStatus})
-        .eq('id', transactionId)
-        .select()
-        .single();
-    return TransactionModel.fromJson(row);
+        .eq('id', transactionId);
   }
 
   // ── Commissions ──────────────────────────────────────────────────────────
@@ -154,7 +158,7 @@ class SupabaseFinanceSource implements FinanceRepository {
   }
 
   @override
-  Future<CommissionModel> recordCommission({
+  Future<void> recordCommission({
     required String businessId,
     required String agreementId,
     required String partnerId,
@@ -165,7 +169,12 @@ class SupabaseFinanceSource implements FinanceRepository {
     required String description,
     String? activityId,
   }) async {
-    final row = await _db.from('commissions').insert({
+    // M8: no `.select().single()` — commissions' SELECT policy (owner of
+    // business_id, or the commission's partner_id) is narrower than its
+    // INSERT policy (any member of business_id), so a partner-side
+    // insert's RETURNING would come back empty and .single() would throw
+    // after the write already committed.
+    await _db.from('commissions').insert({
       'business_id': businessId,
       'agreement_id': agreementId,
       'partner_id': partnerId,
@@ -177,9 +186,7 @@ class SupabaseFinanceSource implements FinanceRepository {
       'status': 'pending',
       'description': description,
       if (activityId != null) 'activity_id': activityId,
-    }).select().single();
-
-    return CommissionModel.fromJson(row);
+    });
   }
 
   @override

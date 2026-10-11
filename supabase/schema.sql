@@ -68,7 +68,13 @@ alter table public.profiles enable row level security;
 
 create policy "Allow public read access to active profiles" 
     on public.profiles for select 
-    using (is_active = true);
+    -- M10: a deactivated user must still read their OWN row. Sign-in
+    -- and session-restore both fetch profiles by user_id; hiding the
+    -- row from its own owner turned every sign-in after removeMember()
+    -- into a raw PGRST116 crash the app couldn't explain. The app now
+    -- sees is_active = false and rejects with a clear message instead.
+    -- auth.uid() is null for anon, so this adds no public exposure.
+    using (is_active = true or auth.uid() = user_id);
 
 create policy "Allow users to update their own profiles" 
     on public.profiles for update 
@@ -104,9 +110,12 @@ create policy "Allow owner to manage their business's members"
 -- (owner). Everything else — role, business_id, plan_tier, user_id,
 -- joined_at, email, financials — is unwritable via the API and must go
 -- through a future SECURITY DEFINER function (e.g. invite-accept step 2).
+-- category_id is on this list because it IS an onboarding field: the
+-- onboarding screen writes it alongside selected_category (both must be
+-- the same value; see supabase_auth_source.setOnboardingComplete).
 revoke update on public.profiles from authenticated, anon;
 grant update (
-    business_name, selected_category, primary_color, job_id,
+    business_name, selected_category, category_id, primary_color, job_id,
     business_tagline, business_description, owner_bio,
     feature_toggles, is_active,
     partners_enabled, marketplace_enabled, agreements_enabled
@@ -663,7 +672,11 @@ create policy "Allow users to delete their own notifications"
 create table public.conversations (
     id uuid default uuid_generate_v4() primary key,
     business_id uuid not null,
-    type text not null default 'direct' check (type in ('direct', 'group')),
+    -- 'community' = the one auto-created Community Feed conversation
+    -- (M6 fix: it used to be created as type 'group' with the
+    -- 'community' marker held only in memory, so every fresh provider
+    -- build created another row).
+    type text not null default 'direct' check (type in ('direct', 'group', 'community')),
     participant_ids uuid[] not null,
     participant_names text[] not null,
     created_at timestamp with time zone not null default timezone('utc'::text, now()),

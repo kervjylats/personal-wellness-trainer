@@ -158,8 +158,10 @@ class AuthNotifier extends Notifier<AuthState> {
 
       // Keep the roster row (created at signUp time) in sync now that
       // categoryId/displayName are finally known. Mock-only: in real
-      // mode, the setOnboardingComplete() call right below already
-      // updates this same data on the one real profiles row.
+      // mode the setOnboardingComplete() call right below writes both
+      // selected_category AND category_id on the one real profiles row
+      // (it used to skip category_id — M7 fix), so there's no second row
+      // to sync there.
       if (updatedProfile.role == AppConstants.roleOwner && DataConfig.useMockData) {
         MockTeamSource().ensureOwnerRow(
           userId: updatedProfile.userId,

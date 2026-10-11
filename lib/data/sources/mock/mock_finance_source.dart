@@ -66,7 +66,7 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
   }
 
   @override
-  Future<TransactionModel> recordTransaction({
+  Future<void> recordTransaction({
     required String businessId,
     required double amount,
     required String currencySymbol,
@@ -105,11 +105,11 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     );
 
     _mutableTransactions.insert(0, newTxn);
-    return newTxn;
+    // Void (M8): no caller uses the returned row.
   }
 
   @override
-  Future<CommissionModel> recordCommission({
+  Future<void> recordCommission({
     required String businessId,
     required String agreementId,
     required String partnerId,
@@ -138,11 +138,11 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
       description: description,
     );
     _mutableCommissions.insert(0, commission);
-    return commission;
+    // Void (M8): no caller uses the returned row.
   }
 
   @override
-  Future<TransactionModel> updateTransactionStatus(
+  Future<void> updateTransactionStatus(
     String transactionId,
     String newStatus,
   ) async {
@@ -151,9 +151,9 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     final index = _mutableTransactions.indexWhere((t) => t.id == transactionId);
     if (index == -1) throw Exception('Transaction $transactionId not found');
 
-    final updated = _mutableTransactions[index].copyWith(status: newStatus);
-    _mutableTransactions[index] = updated;
-    return updated;
+    _mutableTransactions[index] =
+        _mutableTransactions[index].copyWith(status: newStatus);
+    // Void (M8): no caller uses the returned row.
   }
 
   @override

@@ -226,6 +226,7 @@ class MockMessagingSource with MockSourceMixin implements MessagingRepository {
     required String groupName,
     required List<String> participantIds,
     required List<String> participantNames,
+    String type = 'group',
   }) async {
     await simulateNetworkDelay();
 
@@ -234,7 +235,7 @@ class MockMessagingSource with MockSourceMixin implements MessagingRepository {
     final conv = ConversationModel(
       id:               id,
       businessId:       businessId,
-      type:             'group',
+      type:             type,
       participantIds:   participantIds,
       participantNames: participantNames,
       createdAt:        now,

@@ -25,6 +25,7 @@ import 'package:personal_wellness_trainer/core/constants/route_names.dart';
 import 'package:personal_wellness_trainer/core/theme/app_colors.dart';
 import 'package:personal_wellness_trainer/core/theme/app_spacing.dart';
 import 'package:personal_wellness_trainer/core/theme/app_text_styles.dart';
+import 'package:personal_wellness_trainer/core/utils/logger.dart';
 import 'package:personal_wellness_trainer/core/utils/validators.dart';
 import 'package:personal_wellness_trainer/core/widgets/app_text_field.dart';
 import 'package:personal_wellness_trainer/core/widgets/primary_button.dart';
@@ -39,6 +40,8 @@ import 'package:personal_wellness_trainer/engine/config/config_provider.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_builder.dart';
 import 'package:personal_wellness_trainer/engine/invites/invite_link_notifier.dart';
+import 'package:personal_wellness_trainer/modules/loyalty/providers/loyalty_notifier.dart';
+import 'package:personal_wellness_trainer/modules/notifications/providers/notification_notifier.dart';
 
 // Mirrors the established pattern in propose_agreement_screen.dart
 // (_teamRepoForAgreementsProvider) — reads TeamRepository from the data
@@ -187,6 +190,23 @@ class _AcceptInvitationScreenState
 
         await ref.read(authNotifierProvider.notifier).completeInviteJoin(profile);
 
+        // M9: mock parity for the referral bonus handle_new_user()
+        // inserts inside the signup transaction in real mode — the
+        // client dashboard promises points "when they join," and before
+        // this neither mode ever awarded them. Best-effort: a failed
+        // bonus must not fail the join that just succeeded.
+        try {
+          await ref.read(loyaltyRepositoryProvider).addPoints(
+            businessId: link.businessId,
+            userId: link.invitedByUserId,
+            amount: 100,
+            reason: 'Referred a friend',
+          );
+        } catch (e, st) {
+          AppLogger.error('referral bonus failed (non-fatal)',
+              tag: 'AcceptInvitation', error: e, stackTrace: st);
+        }
+
         // Mock mode's inviteMember() doesn't touch invite_links itself —
         // that bookkeeping still needs this explicit call here. (Real
         // mode's trigger already increments use_count atomically as
@@ -219,6 +239,21 @@ class _AcceptInvitationScreenState
         _accepted = true;
         _joinedRole = link.targetRole;
       });
+
+      // M5: tell the inviter their invite was accepted (best-effort —
+      // never fails the join itself; in real mode notify_user() derives
+      // and validates the relationship server-side).
+      await sendNotificationQuietly(
+        ref.read(notificationRepositoryProvider),
+        userId: link.invitedByUserId,
+        businessId: link.businessId,
+        type: 'team',
+        title: 'New team member joined',
+        body: '${_nameController.text.trim()} has accepted your invitation.',
+        referenceId: link.id,
+        referenceType: 'team_member',
+      );
+      if (mounted) ref.invalidate(notificationNotifierProvider);
     } catch (e) {
       if (!mounted) return;
       setState(() {

@@ -62,4 +62,33 @@ class SupabaseNotificationSource implements NotificationRepository {
   Future<void> deleteNotification(String notificationId) async {
     await _db.from('notifications').delete().eq('id', notificationId);
   }
+
+  @override
+  Future<void> createNotification({
+    required String userId,
+    required String businessId,
+    required String type,
+    required String title,
+    required String body,
+    String? referenceId,
+    String? referenceType,
+  }) async {
+    // M5: the ONLY write path. Goes through the notify_user() SECURITY
+    // DEFINER RPC rather than a direct insert — the notifying caller is
+    // often not a member of the recipient's business (marketplace
+    // collab, referral sale), which the insert policy would reject, and
+    // the RPC also derives/validates the business stamp from the
+    // recipient's profile so it can't be forged. No RETURNING is read
+    // back (the caller can't SELECT someone else's notification under
+    // the self-only read policy — same M8 asymmetry).
+    await _db.rpc('notify_user', params: {
+      'p_user_id': userId,
+      'p_business_id': businessId,
+      'p_type': type,
+      'p_title': title,
+      'p_body': body,
+      'p_reference_id': referenceId,
+      'p_reference_type': referenceType,
+    });
+  }
 }

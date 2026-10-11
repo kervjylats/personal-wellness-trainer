@@ -169,6 +169,8 @@ class _MemberTab extends ConsumerWidget {
                     m.role == 'client' && m.primaryPartnerId == myUserId)
                 .toList()
             : all.where((m) => m.role == role).toList();
+        final isOwner =
+            authState is AuthAuthenticated && authState.profile.role == 'owner';
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(teamNotifierProvider),
           child: Column(
@@ -194,6 +196,10 @@ class _MemberTab extends ConsumerWidget {
                             _MemberTile(member: members[i]),
                       ),
               ),
+              // M10: deactivated members are invisible to the roster
+              // query itself — without this section the owner would have
+              // no way to reach the restore action after removing someone.
+              if (isOwner) const _DeactivatedMembersSection(),
             ],
           ),
         );
@@ -391,6 +397,51 @@ class _MemberTile extends ConsumerWidget {
           };
           context.pushNamed(name, extra: member);
         },
+      ),
+    );
+  }
+}
+
+// ── Deactivated members section (M10 restore path) ──────────────────────────
+
+/// Owner-only strip below the roster listing deactivated members, each
+/// rendered with the same [_MemberTile] (which already had an 'Inactive'
+/// badge branch) so tapping through reaches MemberProfileScreen's
+/// "Restore member" action. Renders nothing until there actually are
+/// deactivated members — the default state of every business.
+class _DeactivatedMembersSection extends ConsumerWidget {
+  const _DeactivatedMembersSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inactiveAsync = ref.watch(inactiveTeamMembersProvider);
+    final inactive = inactiveAsync.valueOrNull ?? const <TeamMemberModel>[];
+    if (inactive.isEmpty) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenPaddingH,
+        AppSpacing.sm,
+        AppSpacing.screenPaddingH,
+        AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Deactivated members',
+            style: AppTextStyles.labelSmall
+                .copyWith(color: colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ...inactive.map((m) => _MemberTile(member: m)),
+        ],
       ),
     );
   }

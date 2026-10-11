@@ -23,6 +23,7 @@ import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 import 'package:personal_wellness_trainer/engine/permissions/permissions_engine.dart';
 import 'package:personal_wellness_trainer/engine/providers/module_error_bus.dart';
+import 'package:personal_wellness_trainer/modules/notifications/providers/notification_notifier.dart';
 
 // ── Repository provider ───────────────────────────────────────────────────────
 
@@ -123,6 +124,20 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
       );
       state = AsyncData([...prevState.valueOrNull ?? [], agreement]);
       AppLogger.info('Agreement proposed: ${agreement.id}', tag: _tag);
+
+      // M5: tell the partner a deal is on the table (best-effort — a
+      // failed bell update never fails the proposal itself).
+      await sendNotificationQuietly(
+        ref.read(notificationRepositoryProvider),
+        userId: partnerUserId,
+        businessId: _businessId,
+        type: 'agreement',
+        title: 'Agreement proposed',
+        body: '${auth.profile.displayName} has proposed a new agreement.',
+        referenceId: agreement.id,
+        referenceType: 'agreement',
+      );
+
       return agreement;
     } catch (e, st) {
       AppLogger.error(
@@ -137,7 +152,7 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
   // ── Approve ───────────────────────────────────────────────────────────────────
 
   Future<bool> approveAgreement(String agreementId) async {
-    return _changeStatus(
+    final approved = await _changeStatus(
       agreementId: agreementId,
       action: () => _repo.approveAgreement(
         agreementId: agreementId,
@@ -145,6 +160,31 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
       ),
       errorMessage: 'Could not approve agreement.',
     );
+
+    // M5: tell the original proposer their agreement was accepted —
+    // skip when they'd be notifying themselves (the owner can approve
+    // their own copy in some flows).
+    if (approved) {
+      final updated = state.valueOrNull
+          ?.where((a) => a.id == agreementId)
+          .firstOrNull;
+      final auth = ref.read(authNotifierProvider);
+      if (updated != null &&
+          auth is AuthAuthenticated &&
+          updated.ownerUserId != auth.profile.userId) {
+        await sendNotificationQuietly(
+          ref.read(notificationRepositoryProvider),
+          userId: updated.ownerUserId,
+          businessId: updated.businessId,
+          type: 'agreement',
+          title: 'Agreement approved',
+          body: '${auth.profile.displayName} has approved your agreement.',
+          referenceId: updated.id,
+          referenceType: 'agreement',
+        );
+      }
+    }
+    return approved;
   }
 
   // ── Decline ───────────────────────────────────────────────────────────────────
@@ -252,6 +292,21 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
       state = AsyncData([...prevState.valueOrNull ?? [], created]);
       AppLogger.info(
           'Mutual agreement created from request ${request.id}', tag: _tag);
+
+      // M5: the sender used to find out only by reloading their own
+      // Agreements list — tell them the collab was accepted.
+      await sendNotificationQuietly(
+        ref.read(notificationRepositoryProvider),
+        userId: request.senderOwnerUserId,
+        businessId: request.senderBusinessId,
+        type: 'agreement',
+        title: 'Collab accepted',
+        body:
+            '${auth.profile.displayName} accepted your collaboration request.',
+        referenceId: created.id,
+        referenceType: 'agreement',
+      );
+
       return true;
     } catch (e, st) {
       AppLogger.error('createMutualAgreementFromRequest failed',

@@ -32,11 +32,28 @@ class MemberProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(liveMember.displayName),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_remove_outlined),
-            tooltip: 'Remove member',
-            onPressed: () => _confirmRemove(context, ref),
-          ),
+          if (liveMember.isActive)
+            IconButton(
+              icon: const Icon(Icons.person_remove_outlined),
+              tooltip: 'Remove member',
+              onPressed: () => _confirmRemove(context, ref),
+            )
+          else
+            // M10: the recovery action — without this the "Inactive"
+            // status set by Remove had no way back to Active anywhere
+            // in the app.
+            IconButton(
+              icon: const Icon(Icons.restore),
+              tooltip: 'Restore member',
+              onPressed: () async {
+                final ok = await ref
+                    .read(teamNotifierProvider.notifier)
+                    .reactivateMember(member.userId);
+                if (ok && context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -165,7 +182,9 @@ class MemberProfileScreen extends ConsumerWidget {
         title: const Text('Remove Member'),
         content: Text(
             'Remove ${member.displayName} from your network? '
-            'This cannot be undone.'),
+            "They'll be deactivated (not deleted) — you can restore "
+            'them later from the Deactivated members list at the '
+            'bottom of this screen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

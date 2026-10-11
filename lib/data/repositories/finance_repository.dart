@@ -29,8 +29,14 @@ abstract class FinanceRepository {
   /// [paymentProvider]/[externalRef] mimic a real payment processor's
   /// receipt ('card' → 'py_...', 'bank' → 'trf_...'); null keeps the
   /// default 'manual' bookkeeping entry.
-  /// Returns the created [TransactionModel].
-  Future<TransactionModel> recordTransaction({
+  ///
+  /// Returns void (M8): every caller awaits and discards the result, and
+  /// in real mode the write policies on transactions/commissions are
+  /// WIDER than the read policies — an INSERT..RETURNING by a caller
+  /// outside the row's read policy gets an empty result set and a
+  /// PGRST116 crash even though the write committed. The write is the
+  /// source of truth; the caller refreshes via its notifier.
+  Future<void> recordTransaction({
     required String businessId,
     required double amount,
     required String currencySymbol,
@@ -47,8 +53,9 @@ abstract class FinanceRepository {
     String? externalRef,
   });
 
-  /// Updates the status of an existing transaction.
-  Future<TransactionModel> updateTransactionStatus(
+  /// Updates the status of an existing transaction. See [recordTransaction]
+  /// for why this returns void rather than the updated row (M8).
+  Future<void> updateTransactionStatus(
     String transactionId,
     String newStatus,
   );
@@ -76,7 +83,11 @@ abstract class FinanceRepository {
   /// Records a new pending commission — the real calculation (rate ×
   /// amount, using a specific agreement's actual terms) is the caller's
   /// responsibility; this just persists the already-resolved values.
-  Future<CommissionModel> recordCommission({
+  /// Returns void for the same RLS-RETURNING reason as
+  /// [recordTransaction] (M8) — a partner-side insert is readable only by
+  /// the business owner or the commission's partner_id, neither of which
+  /// is necessarily the caller.
+  Future<void> recordCommission({
     required String businessId,
     required String agreementId,
     required String partnerId,

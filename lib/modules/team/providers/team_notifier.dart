@@ -23,6 +23,20 @@ final teamNotifierProvider =
   dependencies: [authNotifierProvider],
 );
 
+/// Deactivated members of this business (M10) — hidden from the roster
+/// itself, so they need their own read path or the owner would have no
+/// way to reach the restore action. Owner-only in real mode (the
+/// get_deactivated_members() RPC raises for anyone else); non-owners
+/// simply get an empty list without a round-trip that would 403.
+final inactiveTeamMembersProvider =
+    FutureProvider.autoDispose<List<TeamMemberModel>>((ref) async {
+  final auth = ref.watch(authNotifierProvider);
+  if (auth is! AuthAuthenticated) return const [];
+  if (auth.profile.role != 'owner') return const [];
+  final repo = ref.watch(_teamRepositoryProvider);
+  return repo.getInactiveMembers(auth.profile.businessId);
+});
+
 class TeamNotifier extends AsyncNotifier<List<TeamMemberModel>> {
   static const String _tag = 'TeamNotifier';
 
@@ -162,6 +176,8 @@ class TeamNotifier extends AsyncNotifier<List<TeamMemberModel>> {
               .where((m) => m.userId != memberId)
               .toList(),
         );
+        // The deactivated row now lives in the restore list (M10).
+        ref.invalidate(inactiveTeamMembersProvider);
       }
       return success;
     } catch (e, st) {
@@ -169,6 +185,34 @@ class TeamNotifier extends AsyncNotifier<List<TeamMemberModel>> {
       state = prevState;
       ref.read(teamActionErrorProvider.notifier).state =
           'Could not remove member. Please try again.';
+      return false;
+    }
+  }
+
+  /// Reverses removeMember — restores a deactivated member to the roster
+  /// (M10). Owner-gated in real mode by the set_member_active() RPC.
+  Future<bool> reactivateMember(String memberId) async {
+    final prevState = state;
+    try {
+      final success = await _repo.reactivateMember(
+        memberId: memberId,
+        businessId: _businessId,
+      );
+      if (success) {
+        ref.invalidateSelf();
+        ref.invalidate(inactiveTeamMembersProvider);
+        AppLogger.info('Member restored: $memberId', tag: _tag);
+      } else {
+        state = prevState;
+        ref.read(teamActionErrorProvider.notifier).state =
+            'Could not restore that member.';
+      }
+      return success;
+    } catch (e, st) {
+      AppLogger.error('reactivateMember failed', tag: _tag, error: e, stackTrace: st);
+      state = prevState;
+      ref.read(teamActionErrorProvider.notifier).state =
+          'Could not restore that member. Please try again.';
       return false;
     }
   }

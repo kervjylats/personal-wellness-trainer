@@ -99,10 +99,11 @@ class SupabaseMessagingSource implements MessagingRepository {
     required String groupName,
     required List<String> participantIds,
     required List<String> participantNames,
+    String type = 'group',
   }) async {
     final row = await _db.from('conversations').insert({
       'business_id': businessId,
-      'type': 'group',
+      'type': type,
       'participant_ids': participantIds,
       'participant_names': participantNames,
       'group_name': groupName,

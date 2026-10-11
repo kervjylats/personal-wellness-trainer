@@ -26,12 +26,16 @@ abstract class MessagingRepository {
   });
 
   /// Creates a new group conversation. Owner only.
+  /// [type] defaults to 'group'; the Community Feed passes 'community'
+  /// so the type is PERSISTED (M6) and subsequent mounts can find the
+  /// existing row instead of creating a duplicate.
   Future<ConversationModel> createGroupConversation({
     required String businessId,
     required String creatorId,
     required String groupName,
     required List<String> participantIds,
     required List<String> participantNames,
+    String type = 'group',
   });
 
   // ── Messages ──────────────────────────────────────────────────────────────────

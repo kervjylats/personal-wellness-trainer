@@ -168,4 +168,39 @@ class MockNotificationSource with MockSourceMixin implements NotificationReposit
       tag: _tag,
     );
   }
+
+  @override
+  Future<void> createNotification({
+    required String userId,
+    required String businessId,
+    required String type,
+    required String title,
+    required String body,
+    String? referenceId,
+    String? referenceType,
+  }) async {
+    await simulateNetworkDelay(const Duration(milliseconds: 100));
+    // Prepended so the newest-first sort in getNotifications keeps
+    // working without a re-sort; mirrors real mode, where the row lands
+    // with a server-side created_at and the same ordering.
+    _notifications.insert(
+      0,
+      NotificationModel(
+        id: 'notif_${DateTime.now().microsecondsSinceEpoch}',
+        userId: userId,
+        businessId: businessId,
+        title: title,
+        body: body,
+        type: type,
+        createdAt: DateTime.now(),
+        isRead: false,
+        referenceId: referenceId,
+        referenceType: referenceType,
+      ),
+    );
+    AppLogger.debug(
+      'MockNotificationSource: created notification for $userId ($type)',
+      tag: _tag,
+    );
+  }
 }

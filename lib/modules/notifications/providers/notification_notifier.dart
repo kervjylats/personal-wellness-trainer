@@ -18,13 +18,52 @@ import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
 import 'package:personal_wellness_trainer/engine/config/data_config.dart';
 
-// ── Internal repository provider ──────────────────────────────────────────────
+// ── Repository provider ──────────────────────────────────────────────────────
 
-final _notificationRepositoryProvider =
+/// Public so engine events (agreements, finance, invite acceptance) can
+/// create notifications through the same switch-backed instance the
+/// notifier reads from.
+final notificationRepositoryProvider =
     Provider<NotificationRepository>((ref) {
   if (DataConfig.useMockData) return MockNotificationSource();
   return SupabaseNotificationSource();
 });
+
+/// Fire-safe notification send for engine events: logs and swallows any
+/// failure, because a notification is a SIDE EFFECT of some other action
+/// (a proposed agreement, a completed sale) — losing the bell badge must
+/// never fail the action that triggered it. Awaits the write so callers
+/// can invalidate [notificationNotifierProvider] afterwards and have the
+/// fresh row actually be there.
+Future<void> sendNotificationQuietly(
+  NotificationRepository repo, {
+  required String userId,
+  required String businessId,
+  required String type,
+  required String title,
+  required String body,
+  String? referenceId,
+  String? referenceType,
+}) async {
+  try {
+    await repo.createNotification(
+      userId: userId,
+      businessId: businessId,
+      type: type,
+      title: title,
+      body: body,
+      referenceId: referenceId,
+      referenceType: referenceType,
+    );
+  } catch (e, st) {
+    AppLogger.error(
+      'sendNotificationQuietly failed (non-fatal): $title',
+      tag: 'NotificationNotifier',
+      error: e,
+      stackTrace: st,
+    );
+  }
+}
 
 // ── Notifications list provider ───────────────────────────────────────────────
 
@@ -54,7 +93,7 @@ class NotificationNotifier extends AsyncNotifier<List<NotificationModel>> {
   static const String _tag = 'NotificationNotifier';
 
   NotificationRepository get _repo =>
-      ref.read(_notificationRepositoryProvider);
+      ref.read(notificationRepositoryProvider);
 
   @override
   Future<List<NotificationModel>> build() async {
