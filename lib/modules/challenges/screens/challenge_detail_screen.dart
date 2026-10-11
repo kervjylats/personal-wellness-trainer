@@ -45,7 +45,12 @@ class ChallengeDetailScreen extends ConsumerWidget {
                       .join(userName: currentUserName),
                 );
               } else {
-                final today = DateTime.now();
+                // Compare in UTC: real mode's complete_challenge() gates on
+                // SQL current_date (the DB's UTC calendar date), so a
+                // device-local "today" would show the wrong state either
+                // side of UTC midnight. Mock now stamps UTC too, keeping
+                // both modes on one clock (#9).
+                final today = DateTime.now().toUtc();
                 final alreadyDoneToday = myPart.lastCompletedDate != null &&
                     myPart.lastCompletedDate!.year == today.year &&
                     myPart.lastCompletedDate!.month == today.month &&

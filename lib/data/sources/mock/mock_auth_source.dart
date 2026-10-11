@@ -245,6 +245,54 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
   }
 
   @override
+  Future<void> updateProfileFields({
+    required String userId,
+    String? displayName,
+    String? email,
+    String? phone,
+    String? photoUrl,
+  }) async {
+    // #10: Settings → Profile edits used to mutate session state only and
+    // never re-persisted, so every change silently reverted on the next
+    // restart/re-login.
+    await simulateNetworkDelay(const Duration(milliseconds: 100));
+    final prefs = await SharedPreferences.getInstance();
+
+    // Look up by the account's ORIGINAL login key (same userId→loginEmail
+    // pattern as setPlanTier). _persistProfile keys by profile.email, so
+    // an email change must not orphan the session's lookup key — the
+    // updated profile is written back under the login key it already had.
+    final loginEmail = prefs.getString(_kSignedUpEmail(userId));
+    if (loginEmail == null || loginEmail.isEmpty) return;
+    final existing =
+        _signedUpProfiles[loginEmail] ?? await _loadPersistedProfile(loginEmail);
+    if (existing == null) return;
+
+    final updated = existing.copyWith(
+      displayName: displayName ?? existing.displayName,
+      email: (email != null && email.isNotEmpty) ? email : existing.email,
+      phone: phone ?? existing.phone,
+      photoUrl: photoUrl ?? existing.photoUrl,
+    );
+    _signedUpProfiles[loginEmail] = updated;
+    await prefs.setString(
+        _kProfileJson(loginEmail), jsonEncode(updated.toJson()));
+
+    // Keep the shared roster row in sync so the whole business sees the
+    // new display name (same pattern as setPlanTier's ensureOwnerRow sync).
+    if (updated.role == 'owner') {
+      MockTeamSource().ensureOwnerRow(
+        userId: userId,
+        businessId: updated.businessId,
+        displayName: updated.businessName ?? updated.displayName,
+        categoryId: updated.selectedCategory,
+        email: updated.email,
+      );
+    }
+    AppLogger.info('Profile fields persisted for $loginEmail', tag: _tag);
+  }
+
+  @override
   Future<void> setPlanTier(String userId, String planTier) async {
     await simulateNetworkDelay(const Duration(milliseconds: 100));
     final prefs = await SharedPreferences.getInstance();

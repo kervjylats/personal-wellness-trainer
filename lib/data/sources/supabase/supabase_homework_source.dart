@@ -53,7 +53,7 @@ class SupabaseHomeworkSource implements HomeworkRepository {
         .from('homework')
         .update({
           'is_completed': true,
-          'completed_at': DateTime.now().toIso8601String(),
+          'completed_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', homeworkId)
         .select()

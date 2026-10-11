@@ -418,13 +418,19 @@ class AuthNotifier extends Notifier<AuthState> {
     );
   }
 
-  void updateProfile({
+  /// Persists Settings → Profile edits (#10). Session state is updated
+  /// optimistically, then written through AuthRepository.updateProfileFields;
+  /// if the write fails the state is REVERTED and false is returned so the
+  /// screen can say so — the old void method mutated state only, and every
+  /// edit silently reverted on the next restart/re-login (real mode had no
+  /// write path at all).
+  Future<bool> updateProfile({
     String? displayName,
     String? email,
     String? phone,
     String? photoUrl,
-  }) {
-    if (state is! AuthAuthenticated) return;
+  }) async {
+    if (state is! AuthAuthenticated) return false;
     final current = state as AuthAuthenticated;
     final updated = current.profile.copyWith(
       displayName: displayName ?? current.profile.displayName,
@@ -436,7 +442,27 @@ class AuthNotifier extends Notifier<AuthState> {
       profile: updated,
       isNewOwner: current.isNewOwner,
     );
-    AppLogger.info('Profile updated', tag: _tag);
+    try {
+      await _repository.updateProfileFields(
+        userId: current.profile.userId,
+        displayName: updated.displayName,
+        email: updated.email,
+        phone: updated.phone,
+        photoUrl: updated.photoUrl,
+      );
+      AppLogger.info('Profile updated (persisted)', tag: _tag);
+      return true;
+    } catch (e, st) {
+      AppLogger.error('updateProfile persistence failed', tag: _tag,
+          error: e, stackTrace: st);
+      // Revert the optimistic state — a shown-but-lost edit is the exact
+      // bug this method used to be.
+      state = AuthAuthenticated(
+        profile: current.profile,
+        isNewOwner: current.isNewOwner,
+      );
+      return false;
+    }
   }
 
   Future<void> signOut() async {

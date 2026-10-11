@@ -2,11 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_notifier.dart';
 import 'package:personal_wellness_trainer/engine/auth/auth_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  // updateProfile() now persists through the repository (MockAuthSource →
+  // SharedPreferences), so this suite needs the mock prefs plugin the
+  // other auth tests already set up.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('AuthNotifier', () {
     late ProviderContainer container;
-    setUp(() { container = ProviderContainer(); });
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      container = ProviderContainer();
+    });
     tearDown(() { container.dispose(); });
 
     test('initial state is AuthInitial or AuthUnauthenticated', () async {
@@ -70,7 +79,7 @@ void main() {
       await container.read(authNotifierProvider.notifier)
           .devQuickSignIn(jobId: 'yoga_studio', jobLabel: 'Yoga Studio');
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      container.read(authNotifierProvider.notifier)
+      await container.read(authNotifierProvider.notifier)
           .updateProfile(displayName: 'Updated Name');
       final state = container.read(authNotifierProvider);
       if (state is AuthAuthenticated) {

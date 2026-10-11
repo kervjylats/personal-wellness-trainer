@@ -12,6 +12,10 @@ create table public.profiles (
     display_name text not null,
     email text,
     phone text,
+    -- #8: the profile photo. Models (user_profile, team_member) and the
+    -- profile screen always supported it; the column didn't exist, so
+    -- real mode could never store or read one.
+    photo_url text,
     is_active boolean not null default true,
     joined_at timestamp with time zone not null default timezone('utc'::text, now()),
     
@@ -107,8 +111,10 @@ create policy "Allow owner to manage their business's members"
 -- list below is the complete inventory of columns the app actually
 -- writes via direct table updates (verified against every .update() call
 -- on profiles in lib/): onboarding fields (self) + management flags
--- (owner). Everything else — role, business_id, plan_tier, user_id,
--- joined_at, email, financials — is unwritable via the API and must go
+-- (owner) + profile-settings edits (display_name/email/phone/photo_url —
+-- AuthRepository.updateProfileFields, #10; photo_url is #8). Everything
+-- else — role, business_id, plan_tier, user_id,
+-- joined_at, financials — is unwritable via the API and must go
 -- through a future SECURITY DEFINER function (e.g. invite-accept step 2).
 -- category_id is on this list because it IS an onboarding field: the
 -- onboarding screen writes it alongside selected_category (both must be
@@ -118,7 +124,8 @@ grant update (
     business_name, selected_category, category_id, primary_color, job_id,
     business_tagline, business_description, owner_bio,
     feature_toggles, is_active,
-    partners_enabled, marketplace_enabled, agreements_enabled
+    partners_enabled, marketplace_enabled, agreements_enabled,
+    display_name, email, phone, photo_url
 ) on public.profiles to authenticated;
 
 -- ── 1b. PLAN-TIER UPGRADE (Free Owner → Pro Owner) ──────────────────────────

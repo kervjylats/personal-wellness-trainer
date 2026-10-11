@@ -93,7 +93,11 @@ class MarketplaceListing {
       'discoverable': discoverable,
       'open_categories': openCategories,
       'show_to_same_title': showToSameTitle,
-      'updated_at': updatedAt.toIso8601String(),
+      // Always serialise in UTC: this payload is written by
+      // SupabaseMarketplaceSource.upsertListing into a timestamptz column.
+      // An offset-less local ISO string gets read as session-time (UTC) on
+      // the server, shifting the stored instant by the device's offset.
+      'updated_at': updatedAt.toUtc().toIso8601String(),
       if (tagline != null) 'tagline': tagline,
       if (averageRating != null) 'average_rating': averageRating,
     };

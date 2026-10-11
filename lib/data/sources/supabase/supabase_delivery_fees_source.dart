@@ -14,7 +14,12 @@ class SupabaseDeliveryFeesSource implements DeliveryFeesRepository {
     final rows = await _db
         .from('delivery_fees')
         .select()
-        .eq('business_id', businessId);
+        .eq('business_id', businessId)
+        // #12: deterministic zone order (ascending by range start), matching
+        // mock — calculateFee() takes the FIRST zone that contains the
+        // distance, so heap-order results could charge a different fee than
+        // the mock for overlapping zones.
+        .order('min_distance_km', ascending: true);
     return (rows as List)
         .map((r) => DeliveryFeeModel.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -28,7 +33,8 @@ class SupabaseDeliveryFeesSource implements DeliveryFeesRepository {
         .from('delivery_fees')
         .select()
         .eq('business_id', businessId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('min_distance_km', ascending: true);
     return (rows as List)
         .map((r) => DeliveryFeeModel.fromJson(r as Map<String, dynamic>))
         .toList();

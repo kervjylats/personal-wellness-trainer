@@ -48,15 +48,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
-  void _save() {
-    ref.read(authNotifierProvider.notifier).updateProfile(
+  Future<void> _save() async {
+    // #10: awaited now — updateProfile persists through the repository and
+    // reports success, so the snackbar reflects what actually happened
+    // instead of always claiming "saved" over an in-memory-only change.
+    final ok = await ref.read(authNotifierProvider.notifier).updateProfile(
           displayName: _nameController.text.trim(),
           email: _emailController.text.trim(),
           phone: _phoneController.text.trim(),
           photoUrl: _photoUrlController.text.trim(),
         );
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved')),
+      SnackBar(
+        content: Text(ok ? 'Profile saved' : 'Could not save profile.'),
+      ),
     );
   }
 

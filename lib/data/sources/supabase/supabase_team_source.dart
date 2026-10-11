@@ -234,6 +234,9 @@ class SupabaseTeamSource implements TeamRepository {
       ),
       categoryId: (r['category_id'] ?? r['selected_category']) as String?,
       email: r['email'] as String?,
+      // #8: photo_url was the one profile field never mapped here (and
+      // had no backing column until schema.sql gained it).
+      photoUrl: r['photo_url'] as String?,
       primaryPartnerId: r['primary_partner_id'] as String?,
       partnersEnabled: r['partners_enabled'] as bool?,
       marketplaceEnabled: r['marketplace_enabled'] as bool?,

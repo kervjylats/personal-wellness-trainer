@@ -153,8 +153,8 @@ class SupabaseMessagingSource implements MessagingRepository {
     await _db.from('conversations').update({
       'last_message_content': content,
       'last_message_sender_id': senderId,
-      'last_message_at': DateTime.now().toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
+      'last_message_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', conversationId);
 
     return MessageModel.fromJson(row);

@@ -18,7 +18,7 @@ class SupabaseReservationsSource implements ReservationsRepository {
         .from('reservations')
         .select()
         .eq('business_id', businessId)
-        .order('created_at', ascending: false);
+        .order('start_time', ascending: true);
     return (rows as List)
         .map((r) => ReservationModel.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -34,7 +34,7 @@ class SupabaseReservationsSource implements ReservationsRepository {
         .select()
         .eq('business_id', businessId)
         .eq('client_user_id', clientUserId)
-        .order('created_at', ascending: false);
+        .order('start_time', ascending: true);
     return (rows as List)
         .map((r) => ReservationModel.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -50,7 +50,7 @@ class SupabaseReservationsSource implements ReservationsRepository {
         .select()
         .eq('business_id', businessId)
         .eq('staff_user_id', staffUserId)
-        .order('created_at', ascending: false);
+        .order('start_time', ascending: true);
     return (rows as List)
         .map((r) => ReservationModel.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -69,8 +69,8 @@ class SupabaseReservationsSource implements ReservationsRepository {
     final row = await _db.from('reservations').insert({
       'business_id': businessId,
       'client_user_id': clientUserId,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
+      'start_time': startTime.toUtc().toIso8601String(),
+      'end_time': endTime.toUtc().toIso8601String(),
       'status': 'pending',
       if (staffUserId != null) 'staff_user_id': staffUserId,
       if (notes != null) 'notes': notes,

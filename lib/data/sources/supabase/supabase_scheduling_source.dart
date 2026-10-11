@@ -61,11 +61,14 @@ class SupabaseSchedulingSource implements SchedulingRepository {
     required DateTime endTime,
     String? notes,
   }) async {
+    // Always serialise in UTC: timestamptz columns (schema.sql) store
+    // instants; an offset-less local ISO string is read as the DB session
+    // timezone (UTC), shifting every write by the device's UTC offset.
     final row = await _db.from('schedule_slots').insert({
       'business_id': businessId,
       'staff_user_id': staffUserId,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
+      'start_time': startTime.toUtc().toIso8601String(),
+      'end_time': endTime.toUtc().toIso8601String(),
       'is_available': true,
       if (notes != null) 'notes': notes,
     }).select().single();
@@ -84,8 +87,8 @@ class SupabaseSchedulingSource implements SchedulingRepository {
   }) async {
     final updates = <String, dynamic>{};
     if (isAvailable != null) updates['is_available'] = isAvailable;
-    if (startTime != null) updates['start_time'] = startTime.toIso8601String();
-    if (endTime != null) updates['end_time'] = endTime.toIso8601String();
+    if (startTime != null) updates['start_time'] = startTime.toUtc().toIso8601String();
+    if (endTime != null) updates['end_time'] = endTime.toUtc().toIso8601String();
     if (notes != null) updates['notes'] = notes;
     if (linkedActivityId != null) updates['linked_activity_id'] = linkedActivityId;
 

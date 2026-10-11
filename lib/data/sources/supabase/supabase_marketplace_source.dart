@@ -153,7 +153,7 @@ class SupabaseMarketplaceSource implements MarketplaceRepository {
         .from('partnership_requests')
         .update({
           'status': newStatus,
-          'responded_at': DateTime.now().toIso8601String(),
+          'responded_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', requestId)
         .select()

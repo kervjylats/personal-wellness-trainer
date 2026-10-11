@@ -90,7 +90,7 @@ class SupabaseActivitySource implements ActivityRepository {
   }) async {
     final row = await _db.from('activities').update({
       'fields': fields,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
       if (assignedToUserId != null) 'assigned_to_user_id': assignedToUserId,
       if (clientUserId != null) 'client_user_id': clientUserId,
       if (notes != null) 'notes': notes,
@@ -103,7 +103,7 @@ class SupabaseActivitySource implements ActivityRepository {
   Future<void> updateActivityStatus(String activityId, String newStatus) async {
     await _db.from('activities').update({
       'status': newStatus,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', activityId);
   }
 

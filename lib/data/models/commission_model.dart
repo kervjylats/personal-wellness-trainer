@@ -65,7 +65,7 @@ class CommissionModel {
     return CommissionModel(
       id: json['id'] as String,
       businessId: json['business_id'] as String,
-      agreementId: json['agreement_id'] as String,
+      agreementId: json['agreement_id'] as String? ?? '',
       partnerId: json['partner_id'] as String,
       partnerName: json['partner_name'] as String,
       amount: (json['amount'] as num).toDouble(),

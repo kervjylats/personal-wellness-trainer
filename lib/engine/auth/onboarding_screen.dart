@@ -74,10 +74,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       final current = ref.read(authNotifierProvider);
       if (current is AuthAuthenticated &&
           current.profile.displayName.trim().isEmpty) {
-        ref
+        await ref
             .read(authNotifierProvider.notifier)
             .updateProfile(displayName: _businessNameController.text.trim());
       }
+      if (!mounted) return;
       context.goNamed(RouteNames.ownerShell);
     } else {
       setState(() => _isSaving = false);

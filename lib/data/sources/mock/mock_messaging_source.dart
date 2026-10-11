@@ -15,9 +15,14 @@ class MockMessagingSource with MockSourceMixin implements MessagingRepository {
   static const String _tag = 'MockMessagingSource';
 
   // ── In-memory state ───────────────────────────────────────────────────────────
-
-  final List<ConversationModel> _conversations = _seedConversations();
-  final Map<String, List<MessageModel>> _messages = _seedMessages();
+  // STATIC (shared across instances): chat_notifier, message_notifier and
+  // chat_launcher_provider each build their own MockMessagingSource, and
+  // with instance-scoped stores a message sent in one provider was
+  // invisible to the other two (sent message missing from the conversation
+  // preview; a launched DM never appearing in the chat list). Same fix
+  // already applied to MockFinanceSource. See #11.
+  static final List<ConversationModel> _conversations = _seedConversations();
+  static final Map<String, List<MessageModel>> _messages = _seedMessages();
 
   // ── Seed data ─────────────────────────────────────────────────────────────────
 

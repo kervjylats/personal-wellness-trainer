@@ -77,7 +77,7 @@ class SupabaseInventorySource implements InventoryRepository {
         .from('inventory_items')
         .update({
           'reserved_count': reservedCount,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', inventoryItemId)
         .select()
@@ -94,7 +94,7 @@ class SupabaseInventorySource implements InventoryRepository {
         .from('inventory_items')
         .update({
           'low_stock_threshold': threshold,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', inventoryItemId)
         .select()

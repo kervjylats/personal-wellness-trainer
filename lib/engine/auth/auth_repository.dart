@@ -30,6 +30,26 @@ abstract class AuthRepository {
 
   Future<void> setOnboardingComplete(String userId, {UserProfile? updatedProfile});
 
+  /// Persists profile-settings edits (Settings → Profile: display name,
+  /// email, phone, photo URL) — #10. Before this method existed the edit
+  /// screen called AuthNotifier.updateProfile, which mutated session state
+  /// ONLY: the change silently reverted on the next restart/re-login in
+  /// mock mode, and had no write path at all in real mode (the columns
+  /// weren't even in the profiles update grant).
+  ///
+  /// Real mode: updates the granted profiles columns directly (self-update
+  /// RLS policy covers own-row writes); when [email] changes it also goes
+  /// through GoTrue `updateUser` so the sign-in address itself moves.
+  /// Mock mode: updates the in-memory map and re-persists the profile
+  /// JSON under its original login key.
+  Future<void> updateProfileFields({
+    required String userId,
+    String? displayName,
+    String? email,
+    String? phone,
+    String? photoUrl,
+  });
+
   /// Persists a plan-tier change (Free Owner → Pro Owner). The tier is
   /// unwritable via the normal table API (RLS + column grants block it, see
   /// schema.sql) — real mode goes through a SECURITY DEFINER RPC

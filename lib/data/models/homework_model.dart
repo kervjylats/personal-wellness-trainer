@@ -31,7 +31,7 @@ class HomeworkModel {
     return HomeworkModel(
       id: json['id'] as String,
       businessId: json['business_id'] as String,
-      assignedByUserId: json['assigned_by_user_id'] as String,
+      assignedByUserId: json['assigned_by_user_id'] as String? ?? '',
       assignedToUserId: json['assigned_to_user_id'] as String,
       assignedToUserName: json['assigned_to_user_name'] as String? ?? '',
       title: json['title'] as String,

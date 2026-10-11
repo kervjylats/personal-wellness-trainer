@@ -42,7 +42,7 @@ class MockChallengesSource with MockSourceMixin implements ChallengesRepository 
         userId: 'usr_client_001',
         userName: 'Sam Client',
         completedDays: 2,
-        lastCompletedDate: DateTime.now().subtract(const Duration(days: 1)),
+        lastCompletedDate: DateTime.now().toUtc().subtract(const Duration(days: 1)),
       ),
       ChallengeParticipationModel(
         id: 'part_002',
@@ -50,7 +50,7 @@ class MockChallengesSource with MockSourceMixin implements ChallengesRepository 
         userId: 'usr_client_002',
         userName: 'Taylor Client',
         completedDays: 1,
-        lastCompletedDate: DateTime.now(),
+        lastCompletedDate: DateTime.now().toUtc(),
       ),
     ],
     'ch_002': [
@@ -60,7 +60,7 @@ class MockChallengesSource with MockSourceMixin implements ChallengesRepository 
         userId: 'usr_client_001',
         userName: 'Sam Client',
         completedDays: 5,
-        lastCompletedDate: DateTime.now(),
+        lastCompletedDate: DateTime.now().toUtc(),
       ),
     ],
   };
@@ -139,7 +139,7 @@ class MockChallengesSource with MockSourceMixin implements ChallengesRepository 
     final idx = list.indexWhere(
         (p) => p.userId == userId && p.challengeId == challengeId);
     if (idx == -1) throw Exception('Not joined');
-    final today = DateTime.now();
+    final today = DateTime.now().toUtc(); // UTC clock — mirrors SQL current_date and challenge_detail_screen's gate (#9)
     final participant = list[idx];
     // Only allow once per day
     if (participant.lastCompletedDate != null &&

@@ -108,6 +108,34 @@ class SupabaseAuthSource implements AuthRepository {
   }
 
   @override
+  Future<void> updateProfileFields({
+    required String userId,
+    String? displayName,
+    String? email,
+    String? phone,
+    String? photoUrl,
+  }) async {
+    // #10: the Settings → Profile screen used to mutate session state only
+    // and never wrote anything here (the columns weren't even granted).
+    // GoTrue FIRST when the sign-in address changes, so a rejected email
+    // (taken/invalid) fails the whole save instead of leaving auth and
+    // profiles disagreeing about the address.
+    if (email != null && email.isNotEmpty) {
+      await _auth.updateUser(UserAttributes(email: email));
+    }
+
+    final updates = <String, dynamic>{
+      if (displayName != null && displayName.isNotEmpty)
+        'display_name': displayName,
+      if (email != null && email.isNotEmpty) 'email': email,
+      if (phone != null) 'phone': phone,
+      if (photoUrl != null) 'photo_url': photoUrl, // column added in schema.sql (#8)
+    };
+    if (updates.isEmpty) return;
+    await _db.from('profiles').update(updates).eq('user_id', userId);
+  }
+
+  @override
   Future<void> setPlanTier(String userId, String planTier) async {
     // A user cannot update their OWN profiles row's plan_tier via the
     // normal table API (RLS + column grants in schema.sql block it) — so

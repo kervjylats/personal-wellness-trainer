@@ -28,7 +28,7 @@ class ChallengeModel {
     return ChallengeModel(
       id: json['id'] as String,
       businessId: json['business_id'] as String,
-      createdByUserId: json['created_by_user_id'] as String,
+      createdByUserId: json['created_by_user_id'] as String? ?? '',
       title: json['title'] as String,
       description: json['description'] as String? ?? '',
       durationDays: json['duration_days'] as int,

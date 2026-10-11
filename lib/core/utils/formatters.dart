@@ -54,18 +54,27 @@ abstract final class AppFormatters {
   }
 
   // ── Dates ─────────────────────────────────────────────────────────────────────
+  // Every date/time entry point normalises to the device's local zone
+  // FIRST: rows read from Postgres come back as '...+00:00' (UTC), and
+  // reading raw .hour/.day off those shifted every real-mode timestamp by
+  // the UTC offset (finance history, chat times, activity dates). Mock
+  // seeds local DateTimes, where .toLocal() is a no-op — so both modes
+  // render the same wall-clock time.
+
   /// Formats as DD/MM/YYYY.
   static String date(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
+    final d = date.toLocal();
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year}';
   }
 
   /// Formats as H:MM AM/PM.
   static String time(DateTime dt) {
-    final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final m = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final local = dt.toLocal();
+    final h = local.hour > 12 ? local.hour - 12 : (local.hour == 0 ? 12 : local.hour);
+    final m = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';
   }
 

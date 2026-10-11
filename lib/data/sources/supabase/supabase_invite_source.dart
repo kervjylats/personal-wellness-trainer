@@ -58,7 +58,7 @@ class SupabaseInviteSource implements InviteRepository {
       if (categoryId != null) 'category_id': categoryId,
       if (label != null) 'label': label,
       'max_uses': maxUses,
-      if (expiresAt != null) 'expires_at': expiresAt.toIso8601String(),
+      if (expiresAt != null) 'expires_at': expiresAt.toUtc().toIso8601String(),
     }).select().single();
 
     return InviteLinkModel.fromJson(row);

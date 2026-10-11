@@ -59,7 +59,7 @@ class SupabaseAgreementsSource implements AgreementsRepository {
         .from('agreements')
         .update({
           'status': 'active',
-          'responded_at': DateTime.now().toIso8601String(),
+          'responded_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', agreementId)
         .eq('business_id', businessId)
@@ -77,7 +77,7 @@ class SupabaseAgreementsSource implements AgreementsRepository {
         .from('agreements')
         .update({
           'status': 'declined',
-          'responded_at': DateTime.now().toIso8601String(),
+          'responded_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', agreementId)
         .eq('business_id', businessId)
@@ -95,7 +95,7 @@ class SupabaseAgreementsSource implements AgreementsRepository {
         .from('agreements')
         .update({
           'status': 'ended',
-          'ended_at': DateTime.now().toIso8601String(),
+          'ended_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', agreementId)
         .eq('business_id', businessId)

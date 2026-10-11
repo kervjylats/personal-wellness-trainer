@@ -51,7 +51,7 @@ class MediaItemModel {
     return MediaItemModel(
       id: json['id'] as String,
       businessId: json['business_id'] as String,
-      uploadedByUserId: json['uploaded_by_user_id'] as String,
+      uploadedByUserId: json['uploaded_by_user_id'] as String? ?? '',
       title: json['title'] as String,
       description: json['description'] as String?,
       mediaType: json['media_type'] as String,

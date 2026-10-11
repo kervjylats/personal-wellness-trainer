@@ -40,7 +40,7 @@ class MessageModel {
     return MessageModel(
       id:             json['id'] as String,
       conversationId: json['conversation_id'] as String,
-      senderId:       json['sender_id'] as String,
+      senderId:       json['sender_id'] as String? ?? '',
       senderName:     json['sender_name'] as String? ?? '',
       senderRole:     json['sender_role'] as String? ?? 'owner',
       content:        json['content'] as String? ?? '',
