@@ -36,9 +36,18 @@ class SupabaseMarketplaceSource implements MarketplaceRepository {
 
   @override
   Future<MarketplaceListing> upsertListing(MarketplaceListing listing) async {
+    // First-time listings are constructed with id: '' (the mock treats ''
+    // as "not persisted yet"), but '' is an invalid uuid for the PK
+    // column and would kill the very first "go discoverable" tap in real
+    // mode. Strip it so the column default (uuid_generate_v4()) applies;
+    // on later upserts the real id is kept and onConflict merges properly.
+    final payload = listing.toJson();
+    if (payload['id'] is! String || (payload['id'] as String).isEmpty) {
+      payload.remove('id');
+    }
     final row = await _db
         .from('marketplace_listings')
-        .upsert(listing.toJson(), onConflict: 'owner_user_id')
+        .upsert(payload, onConflict: 'owner_user_id')
         .select()
         .single();
     return MarketplaceListing.fromJson(row);

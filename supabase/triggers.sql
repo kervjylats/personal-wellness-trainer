@@ -496,3 +496,180 @@ begin
     return v_row;
 end;
 $$ language plpgsql security definer;
+
+-- ── 12. LAUNCH OWN BUSINESS (associate → owner spin-out) ─────────────────────
+-- Dart-side launchOwnBusiness() used to build a client-mangled id
+-- ('biz_spin_<userId>') that is invalid for every uuid column this flow
+-- touches (migrate_partner_clients RPC args, upgrade_events.business_id),
+-- and profiles.role/business_id are API-unwritable by design (schema.sql
+-- column grants) so the "new business" only ever existed in local state.
+-- This function is the only sanctioned path: ONE atomic transaction mints
+-- a REAL uuid business id, rewrites the caller's profile (partner → owner
+-- of the new business), migrates their own clients across, and records
+-- the audit event. Returns the new business id. Errors throw.
+create or replace function public.launch_business()
+returns uuid as $$
+declare
+    v_profile public.profiles;
+    v_new_business_id uuid := uuid_generate_v4();
+begin
+    select * into v_profile from public.profiles where user_id = auth.uid();
+    if v_profile is null then
+        raise exception 'Not signed in';
+    end if;
+    if v_profile.role <> 'partner' then
+        raise exception 'Only associates can launch their own business';
+    end if;
+
+    update public.profiles
+       set role = 'owner',
+           business_id = v_new_business_id,
+           plan_tier = 'free',
+           business_name = coalesce(v_profile.display_name || ' Space', v_profile.business_name),
+           -- Category is re-chosen during onboarding (isNewOwner: true).
+           selected_category = null,
+           category_id = null
+     where user_id = auth.uid();
+
+    -- Migrate the associate's OWN clients into the new business — the
+    -- same set migratePartnerClients() moves in mock mode.
+    update public.profiles
+       set business_id = v_new_business_id
+     where role = 'client'
+       and primary_partner_id = auth.uid()
+       and business_id = v_profile.business_id;
+
+    insert into public.upgrade_events
+        (user_id, email, from_role, to_role, from_tier, to_tier, business_id)
+    values
+        (auth.uid(), v_profile.email, 'partner', 'owner',
+         coalesce(v_profile.plan_tier, 'free'), 'free', v_new_business_id);
+
+    return v_new_business_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ── 13. MARKETPLACE COLLAB — ATOMIC TWO-SIDE AGREEMENT PAIR ──────────────────
+-- Accepting a marketplace collab used to be three client-side writes: the
+-- accepter's own row (proposed → active) plus a row inserted directly into
+-- the SENDER's business — which RLS rightly blocks (agreements INSERT
+-- policy requires ownership of the row's business). On failure the request
+-- was already marked accepted with a one-sided agreement, and every retry
+-- duplicated the accepter's row. This SECURITY DEFINER function writes
+-- both sides in ONE transaction: the accepter's copy is created AND
+-- immediately active (their business, their decision), the sender's copy
+-- stays 'proposed' for their own review — mirroring
+-- createMutualAgreementFromRequest in agreements_notifier.dart exactly,
+-- including the swapped commission split on the sender's side.
+-- Returns the accepter's (receiver-side) agreement id.
+create or replace function public.create_agreement_pair(
+    p_receiver_user_id uuid,     -- the owner accepting the request
+    p_receiver_business_id uuid,
+    p_sender_user_id uuid,       -- the owner who sent the request
+    p_sender_business_id uuid,
+    p_receiver_side_category_id text,
+    p_sender_side_category_id text,
+    p_receiver_owner_pct double precision,
+    p_receiver_partner_pct double precision,
+    p_notes text
+) returns uuid as $$
+declare
+    v_receiver_side_id uuid;
+begin
+    if auth.uid() is distinct from p_receiver_user_id then
+        raise exception 'Not authorized to accept this request';
+    end if;
+
+    -- The accepter's own copy: created AND immediately active.
+    insert into public.agreements (
+        business_id, owner_user_id, partner_user_id, partner_business_id,
+        category_id, owner_commission_pct, partner_commission_pct,
+        status, responded_at, notes
+    ) values (
+        p_receiver_business_id, p_receiver_user_id, p_sender_user_id,
+        p_sender_business_id, p_receiver_side_category_id,
+        p_receiver_owner_pct, p_receiver_partner_pct,
+        'active', timezone('utc', now()), p_notes
+    ) returning id into v_receiver_side_id;
+
+    -- The sender's copy: proposed, waiting on their own review.
+    -- Cross-tenant by nature — only a SECURITY DEFINER function may write it.
+    insert into public.agreements (
+        business_id, owner_user_id, partner_user_id, partner_business_id,
+        category_id, owner_commission_pct, partner_commission_pct,
+        status, notes
+    ) values (
+        p_sender_business_id, p_sender_user_id, p_receiver_user_id,
+        p_receiver_business_id, p_sender_side_category_id,
+        p_receiver_partner_pct, p_receiver_owner_pct,  -- split swapped, as mock
+        'proposed', p_notes
+    );
+
+    return v_receiver_side_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ── 14. CROSS-TENANT PURCHASE (client buys from a partner business) ──────────
+-- transaction_notifier.purchaseFromPartner books the sale under the
+-- SELLER's business (their revenue) and the referral commission under the
+-- buyer's coach's business — the sale insert is cross-tenant and RLS
+-- blocks it (transactions INSERT policy requires membership in the row's
+-- business). This SECURITY DEFINER function validates the active
+-- agreement, writes the sale on the seller's ledger and the commission on
+-- the coach's, in ONE transaction. Returns the sale's transaction id.
+create or replace function public.purchase_from_partner(
+    p_buyer_user_id uuid,
+    p_agreement_id uuid,
+    p_item_title text,
+    p_amount double precision,
+    p_currency text,
+    p_partner_name text
+) returns uuid as $$
+declare
+    v_agreement public.agreements;
+    v_buyer public.profiles;
+    v_commission double precision;
+    v_sale_id uuid;
+begin
+    if auth.uid() is distinct from p_buyer_user_id then
+        raise exception 'Not authorized to purchase for another user';
+    end if;
+
+    select * into v_agreement from public.agreements
+     where id = p_agreement_id and status = 'active';
+    if v_agreement is null then
+        raise exception 'No active agreement for this purchase';
+    end if;
+
+    select * into v_buyer from public.profiles where user_id = p_buyer_user_id;
+
+    -- The sale lands on the SELLER's ledger — cross-tenant under definer
+    -- privileges, mirroring the mock's single shared store.
+    insert into public.transactions (
+        business_id, amount, currency_symbol, type, status, description,
+        agreement_id, from_user_id, from_user_name, to_user_id, payment_provider
+    ) values (
+        v_agreement.partner_business_id, p_amount, p_currency, 'payment',
+        'completed', 'Sold "' || p_item_title || '" via associate referral',
+        v_agreement.id, p_buyer_user_id,
+        coalesce(v_buyer.display_name, 'Buyer'), v_agreement.partner_user_id, 'manual'
+    ) returning id into v_sale_id;
+
+    -- The referral commission on the coach's ledger (this agreement IS the
+    -- coach's own copy, so v_agreement.business_id is their business).
+    v_commission := p_amount * v_agreement.owner_commission_pct / 100.0;
+    if v_commission > 0 then
+        insert into public.commissions (
+            business_id, agreement_id, partner_id, partner_name, amount,
+            currency_symbol, rate, rate_type, status, description
+        ) values (
+            v_agreement.business_id, v_agreement.id, v_agreement.partner_user_id,
+            p_partner_name, v_commission, p_currency,
+            v_agreement.owner_commission_pct, 'percentage', 'pending',
+            'Referral commission on "' || p_item_title || '"'
+        );
+    end if;
+
+    return v_sale_id;
+end;
+$$ language plpgsql security definer set search_path = public;

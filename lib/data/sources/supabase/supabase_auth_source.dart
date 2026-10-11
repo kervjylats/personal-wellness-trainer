@@ -125,6 +125,16 @@ class SupabaseAuthSource implements AuthRepository {
     }
   }
 
+  @override
+  Future<String> launchBusiness() async {
+    // One atomic SECURITY DEFINER transaction: mints a real uuid business
+    // id, flips role/business_id/plan_tier (all API-unwritable via column
+    // grants), migrates the associate's clients, and records the
+    // upgrade_events audit row. See triggers.sql `launch_business()`.
+    final newBusinessId = await _db.rpc('launch_business');
+    return newBusinessId as String;
+  }
+
   Future<UserProfile> _fetchProfile(String userId) async {
     final data = await _db
         .from('profiles')

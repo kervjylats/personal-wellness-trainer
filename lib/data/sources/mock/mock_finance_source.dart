@@ -232,6 +232,49 @@ class MockFinanceSource with MockSourceMixin implements FinanceRepository {
     return updated;
   }
 
+  @override
+  Future<void> purchaseFromPartner({
+    required String buyerUserId,
+    String? buyerName,
+    required String buyerCoachBusinessId,
+    required String agreementId,
+    required String partnerBusinessId,
+    required String partnerUserId,
+    required String partnerName,
+    required String itemTitle,
+    required double amount,
+    required String currency,
+    required double ownerCommissionPct,
+  }) async {
+    // Sale on the seller's (partner business) ledger, then the referral
+    // commission on the coach's, mirroring the old two-step notifier flow.
+    await recordTransaction(
+      businessId: partnerBusinessId,
+      amount: amount,
+      currencySymbol: currency,
+      type: 'payment',
+      description: 'Sold "$itemTitle" via associate referral',
+      fromUserId: buyerUserId,
+      fromUserName: buyerName,
+      toUserId: partnerUserId,
+      agreementId: agreementId,
+    );
+
+    final commissionAmount = amount * (ownerCommissionPct / 100);
+    if (commissionAmount > 0) {
+      await recordCommission(
+        businessId: buyerCoachBusinessId,
+        agreementId: agreementId,
+        partnerId: partnerUserId,
+        partnerName: partnerName,
+        amount: commissionAmount,
+        currencySymbol: currency,
+        rate: ownerCommissionPct,
+        description: 'Referral commission on "$itemTitle"',
+      );
+    }
+  }
+
   static List<TransactionModel> _buildSeedTransactions() {
     final now = DateTime.now();
     return [

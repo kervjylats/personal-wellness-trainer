@@ -87,4 +87,28 @@ abstract class FinanceRepository {
     required String description,
     String? activityId,
   });
+
+  /// Client buys from a partner business via an active agreement. Books the
+  /// sale on the SELLER's ledger and the referral commission on the COACH's
+  /// as ONE unit of work. Supabase goes through the `purchase_from_partner`
+  /// SECURITY DEFINER RPC (triggers.sql) — the sale INSERT is cross-tenant
+  /// (partner business ≠ buyer's session) and RLS-blocked for direct
+  /// client writes, and the commission amount is computed server-side from
+  /// the agreement's actual owner_commission_pct; the real path ignores the
+  /// ledger-id/percent params and derives everything from the agreement row.
+  /// Mock mode has no cross-source agreement lookup, so it books into the
+  /// ledgers the caller passes through.
+  Future<void> purchaseFromPartner({
+    required String buyerUserId,
+    String? buyerName,
+    required String buyerCoachBusinessId,
+    required String agreementId,
+    required String partnerBusinessId,
+    required String partnerUserId,
+    required String partnerName,
+    required String itemTitle,
+    required double amount,
+    required String currency,
+    required double ownerCommissionPct,
+  });
 }

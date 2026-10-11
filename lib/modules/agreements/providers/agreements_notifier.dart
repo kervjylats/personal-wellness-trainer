@@ -212,19 +212,16 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
   ///    it's their own business, their own decision, no reason to make
   ///    them wait on anyone else.
   ///  - The sender's side is created as 'proposed' under the SENDER's
-  ///    own business, starting from the same rates as a default. The
-  ///    sender sees it appear in their own Agreements list next time
-  ///    they check — through the exact same approve/decline flow that
-  ///    already exists for the within-business case — and can adjust
-  ///    the rates for their own business before approving.
+  ///    own business. The sender sees it appear in their own Agreements
+  ///    list next time they check — through the exact same approve/decline
+  ///    flow that already exists for the within-business case — and can
+  ///    adjust the rates for their own business before approving.
   ///
-  /// PHASE 10 NOTE: writing directly into another tenant's (the
-  /// sender's) business data only works here because mock mode uses one
-  /// shared in-memory store. Once real per-tenant Supabase RLS is in
-  /// place, that second write needs to go through a secure backend
-  /// function instead of a direct client-side repository call — a
-  /// client should never be able to write into another tenant's rows
-  /// directly.
+  /// Both rows are written in ONE unit of work via
+  /// [AgreementsRepository.createMutualAgreementPair]. Real mode goes
+  /// through the `create_agreement_pair` SECURITY DEFINER RPC because the
+  /// sender-side INSERT is cross-tenant and blocked by RLS for the
+  /// accepting user's session (see triggers.sql).
   Future<bool> createMutualAgreementFromRequest({
     required PartnershipRequest request,
     required double ownerCommissionPct,
@@ -236,35 +233,23 @@ class AgreementsNotifier extends AsyncNotifier<List<AgreementModel>> {
     final prevState = state;
     state = const AsyncLoading();
     try {
-      // My own side: propose then immediately approve.
-      final proposed = await _repo.proposeAgreement(
-        businessId: _businessId,
-        ownerUserId: auth.profile.userId,
-        partnerUserId: request.senderOwnerUserId,
-        partnerBusinessId: request.senderBusinessId,
-        categoryId: request.senderCategoryId,
-        ownerCommissionPct: ownerCommissionPct,
-        partnerCommissionPct: partnerCommissionPct,
-        notes: 'Formed via marketplace request ${request.id}.',
-      );
-      final approved = await _repo.approveAgreement(
-        agreementId: proposed.id,
-        businessId: _businessId,
-      );
-
-      // The sender's side: proposed, waiting for their own review.
-      await _repo.proposeAgreement(
-        businessId: request.senderBusinessId,
-        ownerUserId: request.senderOwnerUserId,
-        partnerUserId: auth.profile.userId,
-        partnerBusinessId: _businessId,
-        categoryId: request.receiverCategoryId,
-        ownerCommissionPct: partnerCommissionPct,
-        partnerCommissionPct: ownerCommissionPct,
+      // My side exposes the category the sender asked for; the sender's
+      // side exposes the category they offered (the receiverCategoryId).
+      // Both commission splits are mirrored (swapped) across the pair,
+      // exactly as the old three-step flow did.
+      final created = await _repo.createMutualAgreementPair(
+        receiverUserId: auth.profile.userId,
+        receiverBusinessId: _businessId,
+        senderUserId: request.senderOwnerUserId,
+        senderBusinessId: request.senderBusinessId,
+        receiverSideCategoryId: request.senderCategoryId,
+        senderSideCategoryId: request.receiverCategoryId,
+        receiverOwnerPct: ownerCommissionPct,
+        receiverPartnerPct: partnerCommissionPct,
         notes: 'Formed via marketplace request ${request.id}.',
       );
 
-      state = AsyncData([...prevState.valueOrNull ?? [], approved]);
+      state = AsyncData([...prevState.valueOrNull ?? [], created]);
       AppLogger.info(
           'Mutual agreement created from request ${request.id}', tag: _tag);
       return true;

@@ -250,52 +250,74 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthLoading();
     await Future<void>.delayed(AppConstants.mockDelay);
 
-    final newBusinessId = 'biz_spin_${current.profile.userId}';
-    final updated = current.profile.copyWith(
-      role: AppConstants.roleOwner,
-      planTier: 'free',
-      businessId: newBusinessId,
-      businessName: '${current.profile.displayName} Space',
-      // Carry the associate's OWN job type into their new business rather
-      // than hardcoding 'yoga_studio'. It used to be pinned to yoga, so a
-      // nutritionist who launched their own business silently became a yoga
-      // studio until they redid onboarding. They're routed to onboarding
-      // anyway (isNewOwner: true) where they confirm/replace it.
-      jobId: current.profile.jobId,
-      categoryId: null,
-    );
+    try {
+      late final String newBusinessId;
+      if (DataConfig.useMockData) {
+        // Mock: one shared in-memory store, no uuid columns to validate —
+        // the whole spin-out happens inline here.
+        newBusinessId = 'biz_spin_${current.profile.userId}';
+        await _teamRepository.migratePartnerClients(
+            current.profile.userId, newBusinessId);
+        // Give the new business a roster row so invite/team flows work.
+        MockTeamSource().ensureOwnerRow(
+          userId: current.profile.userId,
+          businessId: newBusinessId,
+          displayName:
+              current.profile.businessName ?? current.profile.displayName,
+          categoryId: null,
+          email: current.profile.email,
+        );
+        await _repository.recordUpgradeEvent(
+          userId: current.profile.userId,
+          email: current.profile.email,
+          fromRole: current.profile.role,
+          toRole: AppConstants.roleOwner,
+          fromTier: current.profile.planTier ?? 'free',
+          toTier: 'free',
+          businessId: newBusinessId,
+        );
+      } else {
+        // Real mode: 'biz_spin_<userId>' is invalid for the uuid columns
+        // this flow touches, and profiles.role/business_id are
+        // API-unwritable by column grants — one SECURITY DEFINER RPC
+        // (`launch_business`) mints a real uuid, flips the profile,
+        // migrates the associate's clients, and records the audit event
+        // atomically. See triggers.sql.
+        newBusinessId = await _repository.launchBusiness();
+      }
 
-    await _teamRepository.migratePartnerClients(current.profile.userId, newBusinessId);
-    if (DataConfig.useMockData) {
-      // Give the new business a roster row so invite/team flows work.
-      MockTeamSource().ensureOwnerRow(
-        userId: current.profile.userId,
+      final updated = current.profile.copyWith(
+        role: AppConstants.roleOwner,
+        planTier: 'free',
         businessId: newBusinessId,
-        displayName: current.profile.businessName ?? current.profile.displayName,
+        businessName: '${current.profile.displayName} Space',
+        // Carry the associate's OWN job type into their new business rather
+        // than hardcoding 'yoga_studio'. It used to be pinned to yoga, so a
+        // nutritionist who launched their own business silently became a yoga
+        // studio until they redid onboarding. They're routed to onboarding
+        // anyway (isNewOwner: true) where they confirm/replace it.
+        jobId: current.profile.jobId,
         categoryId: null,
-        email: current.profile.email,
       );
-    }
-    await _repository.recordUpgradeEvent(
-      userId: current.profile.userId,
-      email: current.profile.email,
-      fromRole: current.profile.role,
-      toRole: AppConstants.roleOwner,
-      fromTier: current.profile.planTier ?? 'free',
-      toTier: 'free',
-      businessId: newBusinessId,
-    );
 
-    // isNewOwner: true → the router's redirect sends them through
-    // onboarding to brand their new free business.
-    state = AuthAuthenticated(
-      profile: updated,
-      isNewOwner: true,
-    );
-    AppLogger.info(
-      'Associate launched a new free business: $newBusinessId',
-      tag: _tag,
-    );
+      // isNewOwner: true → the router's redirect sends them through
+      // onboarding to brand their new free business.
+      state = AuthAuthenticated(
+        profile: updated,
+        isNewOwner: true,
+      );
+
+      AppLogger.info(
+        'Associate launched a new free business: $newBusinessId',
+        tag: _tag,
+      );
+    } catch (e, st) {
+      // Never leave the app stuck on the loading screen — restore the
+      // session exactly as it was so the associate can retry.
+      AppLogger.error('launchOwnBusiness failed',
+          tag: _tag, error: e, stackTrace: st);
+      state = AuthAuthenticated(profile: current.profile);
+    }
   }
 
   /// Owner-only. Updates this business's feature toggles (Partnerships /

@@ -306,6 +306,15 @@ class MockAuthSource with MockSourceMixin implements AuthRepository {
     }
   }
 
+  @override
+  Future<String> launchBusiness() async {
+    // Mock has no uuid columns to validate and one shared in-memory store,
+    // so AuthNotifier handles the whole spin-out inline (migrate clients,
+    // ensure owner row, log the event). This path is never taken in mock.
+    throw UnimplementedError(
+        'Mock launchBusiness: handled inline in AuthNotifier.launchOwnBusiness');
+  }
+
   Future<void> _saveSession(String email) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kSessionEmail, email.trim().toLowerCase());

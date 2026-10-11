@@ -112,6 +112,52 @@ class MockAgreementsSource with MockSourceMixin implements AgreementsRepository 
     );
   }
 
+  @override
+  Future<AgreementModel> createMutualAgreementPair({
+    required String receiverUserId,
+    required String receiverBusinessId,
+    required String senderUserId,
+    required String senderBusinessId,
+    required String receiverSideCategoryId,
+    required String senderSideCategoryId,
+    required double receiverOwnerPct,
+    required double receiverPartnerPct,
+    String? notes,
+  }) async {
+    await simulateNetworkDelay();
+    // Replicates the old three-step flow in one call: the accepter's side
+    // is proposed then immediately approved (their own business, their own
+    // decision); the sender's side is left as 'proposed' under the SENDER's
+    // own business so they can review and adjust before approving.
+    final receiverSide = await proposeAgreement(
+      businessId: receiverBusinessId,
+      ownerUserId: receiverUserId,
+      partnerUserId: senderUserId,
+      partnerBusinessId: senderBusinessId,
+      categoryId: receiverSideCategoryId,
+      ownerCommissionPct: receiverOwnerPct,
+      partnerCommissionPct: receiverPartnerPct,
+      notes: notes,
+    );
+    final approved = await approveAgreement(
+      agreementId: receiverSide.id,
+      businessId: receiverBusinessId,
+    );
+
+    await proposeAgreement(
+      businessId: senderBusinessId,
+      ownerUserId: senderUserId,
+      partnerUserId: receiverUserId,
+      partnerBusinessId: receiverBusinessId,
+      categoryId: senderSideCategoryId,
+      ownerCommissionPct: receiverPartnerPct,
+      partnerCommissionPct: receiverOwnerPct,
+      notes: notes,
+    );
+
+    return approved;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
   AgreementModel _updateStatus({

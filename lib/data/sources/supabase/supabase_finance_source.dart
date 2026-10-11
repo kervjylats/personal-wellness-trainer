@@ -181,4 +181,35 @@ class SupabaseFinanceSource implements FinanceRepository {
 
     return CommissionModel.fromJson(row);
   }
+
+  @override
+  Future<void> purchaseFromPartner({
+    required String buyerUserId,
+    String? buyerName,
+    required String buyerCoachBusinessId,
+    required String agreementId,
+    required String partnerBusinessId,
+    required String partnerUserId,
+    required String partnerName,
+    required String itemTitle,
+    required double amount,
+    required String currency,
+    required double ownerCommissionPct,
+  }) async {
+    // One atomic SECURITY DEFINER transaction: sale on the SELLER's
+    // ledger + referral commission on the coach's. The RPC derives the
+    // buyer's display name, both ledgers, and the commission rate from
+    // the agreement row server-side — the extra client params are for
+    // the mock path only (no cross-source agreement lookup there).
+    // The sale INSERT is cross-tenant and RLS-blocked for direct writes.
+    // See triggers.sql `purchase_from_partner()`.
+    await _db.rpc('purchase_from_partner', params: {
+      'p_buyer_user_id': buyerUserId,
+      'p_agreement_id': agreementId,
+      'p_item_title': itemTitle,
+      'p_amount': amount,
+      'p_currency': currency,
+      'p_partner_name': partnerName,
+    });
+  }
 }

@@ -49,6 +49,17 @@ abstract class AuthRepository {
     String? toTier,
     required String businessId,
   });
+
+  /// Associate → Owner spin-out (real mode). profiles.role/business_id are
+  /// API-unwritable by design (schema.sql column grants), and the old
+  /// client-mangled 'biz_spin_<userId>' id is invalid for the uuid columns
+  /// this flow touches — so one SECURITY DEFINER RPC (`launch_business`)
+  /// mints a real uuid, rewrites the profile, migrates the associate's
+  /// clients, and records the audit event atomically. Returns the new
+  /// business id. Mock mode is handled inline in AuthNotifier (no uuid
+  /// columns exist there to validate).
+  Future<String> launchBusiness();
+
   // activateLicenseKey() removed — superseded by signUp(redemptionCode:),
   // which handles activation-key redemption correctly (real Supabase
   // Auth account, atomic single-use check, no broken deterministic-UUID

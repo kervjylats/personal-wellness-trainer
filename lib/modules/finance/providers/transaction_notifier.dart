@@ -121,17 +121,13 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
   }
 
   /// A client buying a catalog item from a partner business their coach
-  /// has an active agreement with. Records the purchase, then the
-  /// resulting commission — calculated from THIS SPECIFIC agreement's
-  /// own ownerCommissionPct, never a guessed or hardcoded rate.
-  ///
-  /// The purchase itself is booked under the PARTNER's own business
-  /// (agreement.partnerBusinessId) — they're the actual seller, so it's
-  /// their revenue. The commission is booked under the CLIENT's own
-  /// coach's business — that's the referral fee they earned. Writing to
-  /// another tenant's ledger only works here because mock mode shares
-  /// one in-memory store; see createMutualAgreementFromRequest's Phase
-  /// 10 note for the same caveat.
+  /// has an active agreement with. Delegates the booking to
+  /// [FinanceRepository.purchaseFromPartner], which writes the sale (on
+  /// the SELLER's ledger) and the referral commission (on the coach's,
+  /// from THIS SPECIFIC agreement's own ownerCommissionPct) as ONE unit
+  /// of work — real mode goes through the `purchase_from_partner`
+  /// SECURITY DEFINER RPC because the sale INSERT is cross-tenant and
+  /// RLS-blocked for the buyer's session (see triggers.sql).
   ///
   /// SIMPLIFICATION: both records reference agreement.id — the
   /// REFERRING coach's own copy of the agreement, not the partner's
@@ -148,32 +144,19 @@ class TransactionNotifier extends AsyncNotifier<List<TransactionModel>> {
     final agreement = offer.agreement;
     ref.read(financeActionErrorProvider.notifier).state = null;
     try {
-      await _repo.recordTransaction(
-        businessId: agreement.partnerBusinessId,
-        amount: item.price,
-        currencySymbol: item.currency,
-        type: 'payment',
-        description: 'Sold "${item.title}" via associate referral',
-        fromUserId: auth.profile.userId,
-        fromUserName: auth.profile.displayName,
-        toUserId: agreement.partnerUserId,
+      await _repo.purchaseFromPartner(
+        buyerUserId: auth.profile.userId,
+        buyerName: auth.profile.displayName,
+        buyerCoachBusinessId: auth.profile.businessId,
         agreementId: agreement.id,
+        partnerBusinessId: agreement.partnerBusinessId,
+        partnerUserId: agreement.partnerUserId,
+        partnerName: offer.partnerBusinessName,
+        itemTitle: item.title,
+        amount: item.price,
+        currency: item.currency,
+        ownerCommissionPct: agreement.ownerCommissionPct,
       );
-
-      final commissionAmount =
-          item.price * (agreement.ownerCommissionPct / 100);
-      if (commissionAmount > 0) {
-        await _repo.recordCommission(
-          businessId: auth.profile.businessId,
-          agreementId: agreement.id,
-          partnerId: agreement.partnerUserId,
-          partnerName: offer.partnerBusinessName,
-          amount: commissionAmount,
-          currencySymbol: item.currency,
-          rate: agreement.ownerCommissionPct,
-          description: 'Referral commission on "${item.title}"',
-        );
-      }
 
       ref.invalidateSelf();
       ref.invalidate(commissionNotifierProvider);
