@@ -379,6 +379,11 @@ List<RouteBase> clientRoutes() => [
             builder: (_, __) => const NotificationsListScreen(),
           ),
           GoRoute(
+            path: 'homework',
+            name: RouteNames.clientHomework,
+            builder: (_, __) => const HomeworkListScreen(),
+          ),
+          GoRoute(
             path: RouteNames.messageThreadPath,
             name: RouteNames.clientMessageThread,
             builder: (_, state) {

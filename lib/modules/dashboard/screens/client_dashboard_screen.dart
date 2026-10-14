@@ -132,7 +132,7 @@ class ClientDashboardScreen extends ConsumerWidget {
                 label: 'Homework',
                 icon: Icons.assignment_outlined,
                 color: colorScheme.secondary,
-                onTap: () => context.goNamed(RouteNames.clientNotifications), // Maps to client tasks
+                onTap: () => context.goNamed(RouteNames.clientHomework),
               ),
               _FeatureTile(
                 label: 'Progress',

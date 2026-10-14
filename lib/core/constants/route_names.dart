@@ -57,6 +57,7 @@ abstract final class RouteNames {
   static const String clientSettings = 'client-settings';
   static const String clientProfile = 'client-profile';
   static const String clientNotifications = 'client-notifications';
+  static const String clientHomework = 'client-homework';
 
   // ── Module: Finance ───────────────────────────────────────────────────────────
   static const String financeOwner = 'finance-owner';

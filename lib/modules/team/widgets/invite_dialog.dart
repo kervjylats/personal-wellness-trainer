@@ -51,7 +51,13 @@ class _InviteDialogState extends ConsumerState<InviteDialog> {
 
     final result = await ref
         .read(inviteLinkNotifierProvider.notifier)
-        .generateLink(targetRole: widget.role, categoryId: categoryId);
+        .generateLink(
+            targetRole: widget.role,
+            categoryId: categoryId,
+            // One invitee per link: without this every dialog-minted token
+            // stays redeemable forever (maxUses 0 = unlimited), so a used
+            // code can join a second account instead of failing gracefully.
+            maxUses: 1);
 
     if (!mounted) return;
 

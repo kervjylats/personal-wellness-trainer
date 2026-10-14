@@ -112,7 +112,9 @@ things back to me.
 - [ ] **Payments** — client-facing payment history loads
 - [ ] **Community Feed** — loads, can post/interact if that's supported
 - [ ] **Challenges** — list loads, can join one
-- [ ] **Homework** — list loads (if this job type uses it)
+- [ ] **Homework** — list loads via the dashboard Homework tile (if this job
+      type uses it); assigned items show **Mark Done**, completing flips to
+      **Done**
 - [ ] **Rewards/Loyalty** — points/rewards screen loads
 - [ ] **Profile** — client can view/edit their own profile
 - [ ] Client should **not** be able to reach Settings, Finance-admin, Team

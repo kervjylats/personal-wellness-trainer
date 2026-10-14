@@ -104,6 +104,9 @@ class _SlotConflictScreenState extends ConsumerState<SlotConflictScreen> {
     final result = await ref.read(inviteLinkNotifierProvider.notifier).generateLink(
           targetRole: 'client',
           label: 'Client invite (slot conflict redirect)',
+          // One invitee per link (see invite_dialog.dart): a reused code
+          // must fail gracefully instead of joining a second account.
+          maxUses: 1,
         );
 
     if (!mounted) return;

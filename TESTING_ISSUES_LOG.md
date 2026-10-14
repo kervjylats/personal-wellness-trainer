@@ -90,6 +90,46 @@ underneath the chips' rects instead).
 wrap on `_CompactEngagementChip`, the same pattern as the Round 8 dashboard-pill
 fix.)
 
+### Issue #12
+**Date:** 2026-10-14
+**Role:** Client
+**Job type:** All
+**Screen:** Client dashboard > Homework tile
+**Checklist item:** Aggressive game design (Round 11) — full homework lifecycle
+**What happened:** The client's Homework tile opened the *Notifications* screen
+(`clientNotifications`), which surfaces no homework at all — while the real client
+homework view (`_ClientHomeworkView`, with the Mark Done button) existed in
+`HomeworkListScreen` but had no client-side route, tab, or tile pointing at it.
+The only homework route was `owner-homework`. Clients could be assigned homework
+but could never see or complete it.
+**What you expected:** The Homework tile opens the client's homework list with
+Mark Done per item.
+**Severity:** Major (dead feature path)
+**Status:** Fixed (2026-10-14, Round 11 — added `client-homework` route rendering
+`HomeworkListScreen`, which already branches to `_ClientHomeworkView` for the
+client role; dashboard tile retargeted from `clientNotifications`. Game Gate C
+now drives assign → Mark Done → coach-verified Done → delete end to end, 28/28.)
+
+### Issue #13
+**Date:** 2026-10-14
+**Role:** Owner/Partner (inviter) + invitee
+**Job type:** All
+**Screen:** Invite dialog (Generate Link) > landing Code redemption
+**Checklist item:** Aggressive game Scene 13 (Round 11) — reused-token edge case
+**What happened:** An already-consumed invite token could be redeemed a second
+time, joining a second account with no error. `createLink(maxUses = 0)` means
+*unlimited* (`isExhausted = maxUses > 0 && ...`), `recordUse()` counted uses that
+could never trip exhaustion, and no `generateLink` call site passed `maxUses` —
+so the "already been used" error path was unreachable in practice.
+**What you expected:** One invitee per generated link; reuse fails gracefully
+with the invalid/used message.
+**Severity:** Major (access control)
+**Status:** Fixed (2026-10-14, Round 11 — `maxUses: 1` at both per-invite call
+sites: the shared `InviteDialog` and the slot-conflict client-link redirect.
+The friend-referral card stays reusable on purpose ("Invite your Friends").
+Notifier-level fix, so it covers mock and Supabase backends. Game check 28
+now passes: reused token rejected on `#/get-started` with the invalid text.)
+
 ---
 
 ## Known Pre-Existing Issues (Not Blockers)
