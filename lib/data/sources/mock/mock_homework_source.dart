@@ -50,6 +50,17 @@ class MockHomeworkSource with MockSourceMixin implements HomeworkRepository {
   }
 
   @override
+  Future<List<HomeworkModel>> getHomeworkForBusiness(
+    String businessId,
+  ) async {
+    await simulateNetworkDelay();
+    return _homeworks
+        .where((h) => h.businessId == businessId)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  @override
   Future<HomeworkModel> assignHomework({
     required String businessId,
     required String assignedByUserId,

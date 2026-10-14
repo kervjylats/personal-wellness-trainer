@@ -23,6 +23,44 @@ final homeworkNotifierProvider =
   dependencies: [authNotifierProvider],
 );
 
+/// Business-wide homework for the COACH management view.
+///
+/// `homeworkNotifierProvider` is hard-wired to homework assigned to the
+/// signed-in user (the client view), so a coach watching it always saw
+/// an empty list even after assigning work. This provider reads
+/// getHomeworkForBusiness instead. It deliberately lives here rather
+/// than as a method on HomeworkNotifier because that class declares
+/// `dependencies: [authNotifierProvider]`, and a dependent notifier
+/// cannot invalidate providers outside its dependency set — the screen
+/// invalidates THIS provider after an assign/delete.
+final businessHomeworkNotifierProvider =
+    AsyncNotifierProvider<BusinessHomeworkNotifier, List<HomeworkModel>>(
+  BusinessHomeworkNotifier.new,
+  dependencies: [authNotifierProvider],
+);
+
+class BusinessHomeworkNotifier extends AsyncNotifier<List<HomeworkModel>> {
+  static const String _tag = 'BusinessHomeworkNotifier';
+
+  HomeworkRepository get _repo => ref.read(_homeworkRepositoryProvider);
+
+  @override
+  Future<List<HomeworkModel>> build() async {
+    final auth = ref.watch(authNotifierProvider);
+    if (auth is! AuthAuthenticated) return [];
+    return _repo.getHomeworkForBusiness(auth.profile.businessId);
+  }
+
+  Future<void> delete(String homeworkId) async {
+    try {
+      await _repo.deleteHomework(homeworkId);
+      ref.invalidateSelf();
+    } catch (e, st) {
+      AppLogger.error('delete homework failed', tag: _tag, error: e, stackTrace: st);
+    }
+  }
+}
+
 class HomeworkNotifier extends AsyncNotifier<List<HomeworkModel>> {
   static const String _tag = 'HomeworkNotifier';
 

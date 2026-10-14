@@ -32,12 +32,13 @@ class DeliveryFeesScreen extends ConsumerWidget {
 
     final role        = AppRole.fromString(authState.profile.role);
     final jobConfig   = ref.watch(activeJobConfigProvider);
-    final moduleLabel = jobConfig.terminology.labelFor('delivery_fees');
+    final moduleLabel = jobConfig.terminology.moduleLabel('delivery_fees', fallback: 'Delivery Fees');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(moduleLabel),
-        automaticallyImplyLeading: false,
+        // Back arrow shows ONLY when this screen was PUSHED from the hub
+        // (canPop); see schedule_screen.dart (Phase D dead-end fix).
       ),
       floatingActionButton: role.isOwner
           ? FloatingActionButton(

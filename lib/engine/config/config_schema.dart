@@ -155,6 +155,15 @@ class ConfigTerminology {
     }
   }
 
+  /// Terminology label for a MODULE id (scheduling, reviews, ...), falling
+  /// back to [fallback] when the job config has no case for it. Without
+  /// this, labelFor()'s `default: return key` leaked raw module ids into
+  /// module-screen AppBars and empty states ("No slots in scheduling").
+  String moduleLabel(String moduleId, {required String fallback}) {
+    final label = labelFor(moduleId);
+    return label == moduleId ? fallback : label;
+  }
+
   factory ConfigTerminology.fromJson(Map<String, dynamic> json) {
     return ConfigTerminology(
       owner:      json['owner'] as String? ?? 'Owner',

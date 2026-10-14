@@ -30,12 +30,13 @@ class InventoryScreen extends ConsumerWidget {
     if (authState is! AuthAuthenticated) return const SizedBox.shrink();
 
     final jobConfig   = ref.watch(activeJobConfigProvider);
-    final moduleLabel = jobConfig.terminology.labelFor('inventory');
+    final moduleLabel = jobConfig.terminology.moduleLabel('inventory', fallback: 'Inventory');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(moduleLabel),
-        automaticallyImplyLeading: false,
+        // Back arrow shows ONLY when this screen was PUSHED from the hub
+        // (canPop); see schedule_screen.dart (Phase D dead-end fix).
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(inventoryNotifierProvider),

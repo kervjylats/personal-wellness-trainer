@@ -32,12 +32,16 @@ class ScheduleScreen extends ConsumerWidget {
 
     final role        = AppRole.fromString(authState.profile.role);
     final jobConfig   = ref.watch(activeJobConfigProvider);
-    final moduleLabel = jobConfig.terminology.labelFor('scheduling');
+    final moduleLabel = jobConfig.terminology.moduleLabel('scheduling', fallback: 'Schedule');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(moduleLabel),
-        automaticallyImplyLeading: false,
+        // Back arrow shows ONLY when this screen was PUSHED from the hub
+        // (canPop). The old `automaticallyImplyLeading: false` here made
+        // every module tile a dead end: no back button, no bottom nav,
+        // URL unchanged — with `true`, a tab body still implies nothing
+        // (canPop is false there).
       ),
       floatingActionButton: role.isOwner || role.isStaff
           ? FloatingActionButton(

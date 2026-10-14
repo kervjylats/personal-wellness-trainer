@@ -32,12 +32,13 @@ class GpsTrackingScreen extends ConsumerWidget {
 
     final role        = AppRole.fromString(authState.profile.role);
     final jobConfig   = ref.watch(activeJobConfigProvider);
-    final moduleLabel = jobConfig.terminology.labelFor('gps');
+    final moduleLabel = jobConfig.terminology.moduleLabel('gps', fallback: 'GPS Tracking');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(moduleLabel),
-        automaticallyImplyLeading: false,
+        // Back arrow shows ONLY when this screen was PUSHED from the hub
+        // (canPop); see schedule_screen.dart (Phase D dead-end fix).
         actions: [
           if (role.isStaff)
             IconButton(

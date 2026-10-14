@@ -447,30 +447,41 @@ class _CompactEngagementChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: color.withAlpha(25),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withAlpha(80), width: 1.5),
+    // Semantics(button: true, container: true): the Round 8 dashboard-pill
+    // fix again — the bare GestureDetector let Flutter merge the chip's
+    // tap action and label into the hub's aggregate semantics node, so no
+    // interactive element was exposed at all (invisible to screen readers
+    // AND to the rig's find_and_click, whose el.click() had nothing bound
+    // to fire). The container keeps this node standalone: label +
+    // role=button + tap action, activatable even below the fold.
+    return Semantics(
+      button: true,
+      container: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: color.withAlpha(25),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withAlpha(80), width: 1.5),
+              ),
+              child: Icon(icon, color: color, size: 26),
             ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            label,
-            style: AppTextStyles.labelSmall.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w500,
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              label,
+              style: AppTextStyles.labelSmall.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -26,6 +26,24 @@ class SupabaseHomeworkSource implements HomeworkRepository {
   }
 
   @override
+  Future<List<HomeworkModel>> getHomeworkForBusiness(
+    String businessId,
+  ) async {
+    // No assigned_to_user_id filter: the coach view needs every
+    // assignment in the business. The homework table's SELECT RLS is
+    // business-membership scoped, so the DB already permits this read —
+    // and only this read (cross-business reads still bounce).
+    final rows = await _db
+        .from('homework')
+        .select()
+        .eq('business_id', businessId)
+        .order('created_at', ascending: false);
+    return (rows as List)
+        .map((r) => HomeworkModel.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
   Future<HomeworkModel> assignHomework({
     required String businessId,
     required String assignedByUserId,
